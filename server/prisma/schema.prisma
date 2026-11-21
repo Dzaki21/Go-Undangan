@@ -1,0 +1,68 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum DeployStatus {
+  draft
+  building
+  ready
+  failed
+}
+
+enum Attendance {
+  hadir
+  ragu
+  tidak_hadir
+}
+
+model User {
+  id           String       @id @default(uuid())
+  name         String
+  email        String       @unique
+  passwordHash String
+  createdAt    DateTime     @default(now())
+  invitations  Invitation[]
+
+  @@map("users")
+}
+
+model Invitation {
+  id                 String       @id @default(uuid())
+  userId             String
+  user               User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  slug               String       @unique
+  templateKey        String       @default("minimalist") // "minimalist" | "floral" | "dark-luxury"
+  contentJson        Json
+  vercelProjectId    String?
+  vercelProjectName  String?
+  latestDeploymentId String?
+  deploymentUrl      String?
+  deployStatus       DeployStatus @default(draft)
+  publishedAt        DateTime?
+  createdAt          DateTime     @default(now())
+  updatedAt          DateTime     @updatedAt
+  wishes             GuestWish[]
+
+  @@index([userId])
+  @@index([slug])
+  @@map("invitations")
+}
+
+model GuestWish {
+  id           String      @id @default(uuid())
+  invitationId String
+  invitation   Invitation  @relation(fields: [invitationId], references: [id], onDelete: Cascade)
+  guestName    String
+  attendance   Attendance  @default(hadir)
+  guestCount   Int?        @default(1)
+  message      String
+  createdAt    DateTime    @default(now())
+
+  @@index([invitationId])
+  @@map("guest_wishes")
+}
