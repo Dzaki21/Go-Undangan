@@ -126,6 +126,8 @@ export const EventScheduleSection: React.FC<EventScheduleSectionProps> = ({
               ? 'bg-[#18181d] border-gold-500/30 text-white'
               : themeConfig.id === 'floral'
               ? 'bg-[#324b39] border-emerald-700 text-emerald-50'
+              : themeConfig.id === 'royal-vintage'
+              ? 'bg-[#5e101d] border-[#b88e63]/50 text-[#faede7]'
               : 'bg-stone-900 border-stone-800 text-white'
           }`}
         >
@@ -151,6 +153,8 @@ export const EventScheduleSection: React.FC<EventScheduleSectionProps> = ({
                       ? 'text-gold-400'
                       : themeConfig.id === 'floral'
                       ? 'text-emerald-200'
+                      : themeConfig.id === 'royal-vintage'
+                      ? 'text-[#f5dbb5]'
                       : 'text-amber-200'
                   }`}
                 >

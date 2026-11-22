@@ -19,6 +19,7 @@ const fallbackTemplates: TemplateCatalogItem[] = [
   { id: '1', templateKey: 'minimalist', name: 'Minimalist Warm', description: 'Dominan putih/krem hangat.', thumbnailUrl: '' },
   { id: '2', templateKey: 'floral', name: 'Soft Floral Sage', description: 'Nuansa sage green & dedaunan.', thumbnailUrl: '' },
   { id: '3', templateKey: 'dark-luxury', name: 'Dark Luxury & Gold', description: 'Latar hitam dengan kilau emas.', thumbnailUrl: '' },
+  { id: '4', templateKey: 'royal-vintage', name: 'Royal Vintage Burgundy', description: 'Tirai maroon beludru & chandelier emas.', thumbnailUrl: '' },
 ];
 
 // ─── STEP DEFINITIONS ───
@@ -604,9 +605,9 @@ export const FormBuilderPage: React.FC<FormBuilderPageProps> = ({
   // ─── LIVE PREVIEW PANEL ───────────────
   // ═══════════════════════════════════════
   const renderLivePreview = () => {
-    const themeLabel = form.templateKey === 'minimalist' ? 'Minimalist' : form.templateKey === 'floral' ? 'Floral Sage' : 'Dark Luxury';
-    const themeBg = form.templateKey === 'dark-luxury' ? 'bg-stone-900 text-stone-200' : form.templateKey === 'floral' ? 'bg-[#f0f4f1] text-stone-800' : 'bg-[#faf8f5] text-stone-800';
-    const themeAccent = form.templateKey === 'dark-luxury' ? 'text-gold-400' : form.templateKey === 'floral' ? 'text-emerald-700' : 'text-[#9c7b4c]';
+    const themeLabel = form.templateKey === 'minimalist' ? 'Minimalist' : form.templateKey === 'floral' ? 'Floral Sage' : form.templateKey === 'royal-vintage' ? 'Royal Vintage' : 'Dark Luxury';
+    const themeBg = form.templateKey === 'dark-luxury' ? 'bg-stone-900 text-stone-200' : form.templateKey === 'floral' ? 'bg-[#f0f4f1] text-stone-800' : form.templateKey === 'royal-vintage' ? 'bg-[#fdfaf5] text-[#442b2d]' : 'bg-[#faf8f5] text-stone-800';
+    const themeAccent = form.templateKey === 'dark-luxury' ? 'text-gold-400' : form.templateKey === 'floral' ? 'text-emerald-700' : form.templateKey === 'royal-vintage' ? 'text-[#8b1e2f]' : 'text-[#9c7b4c]';
 
     return (
       <div className={`rounded-2xl border border-stone-200 shadow-inner overflow-hidden ${themeBg} p-5 text-center space-y-5 h-full min-h-[400px] flex flex-col justify-between`}>

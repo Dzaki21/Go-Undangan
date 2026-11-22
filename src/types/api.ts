@@ -20,7 +20,7 @@ export interface AuthResponse {
 export interface InvitationListItem {
   id: string;
   slug: string;
-  templateKey: 'minimalist' | 'floral' | 'dark-luxury';
+  templateKey: 'minimalist' | 'floral' | 'dark-luxury' | 'royal-vintage';
   deployStatus: 'draft' | 'building' | 'ready' | 'failed';
   deploymentUrl?: string;
   vercelProjectName?: string;
@@ -58,7 +58,7 @@ export interface PresetSongItem {
 
 export interface TemplateCatalogItem {
   id: string;
-  templateKey: 'minimalist' | 'floral' | 'dark-luxury';
+  templateKey: 'minimalist' | 'floral' | 'dark-luxury' | 'royal-vintage';
   name: string;
   description: string;
   thumbnailUrl: string;

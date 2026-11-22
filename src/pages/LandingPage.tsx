@@ -54,6 +54,15 @@ export const LandingPage: React.FC<LandingPageProps> = ({
       coverImg: 'https://images.unsplash.com/photo-1520854221256-17451cc331bf?auto=format&fit=crop&w=700&q=80',
       palette: ['#0d0d0f', '#d4a853', '#fafaf9'],
     },
+    {
+      id: 'royal-vintage',
+      title: 'Royal Vintage Burgundy',
+      description: 'Nuansa tirai beludru maroon burgundy, chandelier mewah, dan ornamen vintage klasik ala kerajaan.',
+      tag: 'New Release',
+      badgeBg: 'bg-[#5c131f] text-[#faede7] border-[#912033]',
+      coverImg: 'https://images.unsplash.com/photo-1544077960-604201fe74bc?auto=format&fit=crop&w=700&q=80',
+      palette: ['#540c17', '#b88e63', '#f4efe8'],
+    },
   ];
 
   return (
@@ -179,7 +188,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
             {templateCards.map((card) => (
               <div
                 key={card.id}

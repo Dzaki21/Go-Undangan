@@ -53,6 +53,17 @@ export const CoverSection: React.FC<CoverSectionProps> = ({
           <div className="absolute top-6 left-6 w-16 h-16 border-t-2 border-l-2 border-gold-400/50 pointer-events-none rounded-tl-xl" />
           <div className="absolute bottom-6 right-6 w-16 h-16 border-b-2 border-r-2 border-gold-400/50 pointer-events-none rounded-br-xl" />
         </>
+      ) : themeConfig.id === 'royal-vintage' ? (
+        <>
+          {/* Vintage Curtain & Chandelier Ambience Header */}
+          <div className="absolute top-0 inset-x-0 h-40 bg-gradient-to-b from-[#2a040b] via-[#460913]/90 to-transparent pointer-events-none flex justify-center">
+            <div className="w-48 h-28 border-b-2 border-x-2 border-[#b88e63]/40 rounded-b-[4rem] opacity-75 mt-0 flex items-center justify-center">
+              <span className="text-[#e8cca8] text-2xl filter drop-shadow">❦</span>
+            </div>
+          </div>
+          <div className="absolute inset-4 border-2 border-[#b88e63]/30 pointer-events-none rounded-3xl" />
+          <div className="absolute inset-6 border border-[#b88e63]/20 pointer-events-none rounded-2xl" />
+        </>
       ) : (
         <>
           <div className="absolute top-8 left-8 right-8 bottom-8 border border-white/20 pointer-events-none rounded-3xl" />

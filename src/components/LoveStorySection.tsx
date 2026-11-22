@@ -44,6 +44,8 @@ export const LoveStorySection: React.FC<LoveStorySectionProps> = ({ loveStory, t
                     ? 'bg-gold-500'
                     : themeConfig.id === 'floral'
                     ? 'bg-[#3b5943]'
+                    : themeConfig.id === 'royal-vintage'
+                    ? 'bg-[#6e1322]'
                     : 'bg-stone-800'
                 }`}
               >

@@ -43,6 +43,8 @@ const ProfileCard: React.FC<{
               ? 'border-gold-400/70'
               : themeConfig.id === 'floral'
               ? 'border-emerald-400/70'
+              : themeConfig.id === 'royal-vintage'
+              ? 'border-[#912033] ring-4 ring-[#b88e63]/60 shadow-xl'
               : 'border-stone-300'
           }`}
         >
@@ -118,6 +120,8 @@ export const CoupleProfileSection: React.FC<CoupleProfileSectionProps> = ({
                   ? 'bg-gold-500 text-stone-950'
                   : themeConfig.id === 'floral'
                   ? 'bg-[#3b5943] text-white'
+                  : themeConfig.id === 'royal-vintage'
+                  ? 'bg-[#6e1322] text-[#f5e9e2] border-2 border-[#b88e63]'
                   : 'bg-stone-900 text-white'
               }`}
             >

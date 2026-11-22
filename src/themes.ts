@@ -1,4 +1,4 @@
-export type ThemeType = 'minimalist' | 'floral' | 'dark-luxury';
+export type ThemeType = 'minimalist' | 'floral' | 'dark-luxury' | 'royal-vintage';
 
 export interface ThemeConfig {
   id: ThemeType;
@@ -145,5 +145,40 @@ export const themes: Record<ThemeType, ThemeConfig> = {
     coverOverlay: 'bg-stone-950/75',
     coverGreetingBox: 'bg-stone-900/85 backdrop-blur-md border border-gold-500/40 text-stone-100 shadow-2xl',
     coverButton: 'bg-gradient-to-r from-gold-600 via-gold-500 to-gold-600 hover:from-gold-500 hover:to-gold-400 text-stone-950 font-medium ring-2 ring-gold-300/30',
+  },
+
+  'royal-vintage': {
+    id: 'royal-vintage',
+    name: 'Royal Vintage Burgundy',
+    pageBg: 'bg-[#f4efe8]',
+    containerBg: 'bg-[#faf6f0]',
+    containerBorder: 'border-[#7b1828]/25',
+    bodyText: 'text-[#442b2d]',
+    mutedText: 'text-[#7d5659]',
+    accentText: 'text-[#8b1e2f]',
+    subtleBg: 'bg-[#ece4d9]',
+    cardBg: 'bg-[#fdfaf5]',
+    cardBorder: 'border-[#7b1828]/20',
+
+    headingFont: 'font-serif',
+    titleColor: 'text-[#611320]',
+    sectionSubtitleColor: 'text-[#8b1e2f]',
+    dividerColor: 'bg-[#8b1e2f]',
+
+    primaryBtn: 'bg-gradient-to-r from-[#6e1322] to-[#8b1e2f] hover:from-[#580d19] hover:to-[#731624] text-[#faede7] font-serif tracking-wide shadow-md shadow-[#6e1322]/30',
+    secondaryBtn: 'bg-[#ebdcd3] text-[#5c1621] hover:bg-[#decbc0] border border-[#a84453]/40',
+    badgeBg: 'bg-[#f0dfd8] border border-[#8b1e2f]/30',
+    badgeText: 'text-[#6e1322]',
+
+    showFloralDecor: false,
+    ornamentColor: 'text-[#8b1e2f]',
+
+    musicBtnBg: 'bg-[#6e1322]/95 text-[#f5e9e2] shadow-[#6e1322]/40',
+    musicBtnBorder: 'border-[#cda183]',
+    musicBtnIcon: 'text-[#fceee6]',
+
+    coverOverlay: 'bg-gradient-to-b from-[#3a0810]/85 via-[#540c17]/75 to-[#1f0307]/95',
+    coverGreetingBox: 'bg-[#f8f3eb]/95 backdrop-blur-md border-2 border-[#b88e63] text-[#42171d] shadow-2xl rounded-2xl',
+    coverButton: 'bg-gradient-to-r from-[#e7d8c4] to-[#f5ecdf] hover:from-[#d8c3aa] hover:to-[#ebdcc9] text-[#5a111c] font-serif font-bold tracking-wider ring-2 ring-[#9e754a]/40 shadow-lg',
   },
 };

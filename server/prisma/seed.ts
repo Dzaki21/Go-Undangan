@@ -61,6 +61,13 @@ async function main() {
       thumbnailUrl: 'https://images.unsplash.com/photo-1520854221256-17451cc331bf?auto=format&fit=crop&w=700&q=80',
       isActive: true,
     },
+    {
+      templateKey: 'royal-vintage',
+      name: 'Royal Vintage Burgundy',
+      description: 'Nuansa tirai beludru maroon burgundy, chandelier mewah, dan ornamen vintage klasik ala kerajaan.',
+      thumbnailUrl: 'https://images.unsplash.com/photo-1544077960-604201fe74bc?auto=format&fit=crop&w=700&q=80',
+      isActive: true,
+    },
   ];
 
   for (const t of templates) {

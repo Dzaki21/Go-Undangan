@@ -20,6 +20,7 @@ export const DevThemeSwitcher: React.FC<DevThemeSwitcherProps> = ({
     { key: 'minimalist', label: 'Minimalist', dotColor: 'bg-amber-100 border-stone-400' },
     { key: 'floral', label: 'Floral Sage', dotColor: 'bg-emerald-400 border-emerald-700' },
     { key: 'dark-luxury', label: 'Dark Luxury', dotColor: 'bg-stone-900 border-gold-400' },
+    { key: 'royal-vintage', label: 'Royal Vintage', dotColor: 'bg-[#6e1322] border-[#b88e63]' },
   ];
 
   return (
