@@ -203,6 +203,7 @@ const PlatformApp: React.FC = () => {
             if (role === 'ADMIN') setPage('admin-dashboard');
             else setPage('dashboard');
           }}
+          onLogout={handleLogout}
           isLoggedIn={isAuthenticated}
         />
       )}
@@ -227,6 +228,7 @@ const PlatformApp: React.FC = () => {
             onCreateNew={() => { setEditInvitationId(null); setPage('builder'); }}
             onEditInvitation={handleEditInvitation}
             onDeployInvitation={(id) => setDeployInvitationId(id)}
+            onLogout={handleLogout}
           />
         </ProtectedRoute>
       )}

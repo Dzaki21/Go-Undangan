@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Sparkles, Heart, ArrowRight, ShieldCheck, Zap, Globe, Music, Smartphone, Eye } from 'lucide-react';
+import { Sparkles, Heart, ArrowRight, ShieldCheck, Zap, Globe, Music, Smartphone, Eye, LogOut } from 'lucide-react';
 import { ThemeType } from '../themes';
 import { TemplatePreviewModal } from '../components/TemplatePreviewModal';
 
@@ -7,6 +7,7 @@ interface LandingPageProps {
   onSelectTemplate: (template: ThemeType) => void;
   onNavigateLogin: () => void;
   onNavigateDashboard: () => void;
+  onLogout?: () => void;
   isLoggedIn: boolean;
 }
 
@@ -14,6 +15,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
   onSelectTemplate,
   onNavigateLogin,
   onNavigateDashboard,
+  onLogout,
   isLoggedIn,
 }) => {
   const [previewTheme, setPreviewTheme] = useState<ThemeType | null>(null);
@@ -82,12 +84,23 @@ export const LandingPage: React.FC<LandingPageProps> = ({
 
           <div className="flex items-center gap-3">
             {isLoggedIn ? (
-              <button
-                onClick={onNavigateDashboard}
-                className="px-5 py-2 bg-stone-900 hover:bg-stone-800 text-white text-xs sm:text-sm font-medium rounded-full transition-all shadow-sm cursor-pointer"
-              >
-                Buka Dashboard
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={onNavigateDashboard}
+                  className="px-5 py-2 bg-stone-900 hover:bg-stone-800 text-white text-xs sm:text-sm font-medium rounded-full transition-all shadow-sm cursor-pointer"
+                >
+                  Buka Dashboard
+                </button>
+                {onLogout && (
+                  <button
+                    onClick={onLogout}
+                    className="p-2 text-stone-500 hover:text-rose-600 rounded-full hover:bg-rose-50 transition-colors cursor-pointer"
+                    title="Logout"
+                  >
+                    <LogOut className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
             ) : (
               <>
                 <button

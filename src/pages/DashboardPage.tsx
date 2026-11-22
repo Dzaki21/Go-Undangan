@@ -13,6 +13,7 @@ interface DashboardPageProps {
   onCreateNew: () => void;
   onEditInvitation: (id: string) => void;
   onDeployInvitation?: (id: string) => void;
+  onLogout?: () => void;
 }
 
 export const DashboardPage: React.FC<DashboardPageProps> = ({
@@ -20,6 +21,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   onCreateNew,
   onEditInvitation,
   onDeployInvitation,
+  onLogout,
 }) => {
   const user = getStoredUser();
   const [invitations, setInvitations] = useState<InvitationListItem[]>([]);
@@ -69,8 +71,12 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   };
 
   const handleLogout = () => {
-    removeAuthToken();
-    onNavigateLanding();
+    if (onLogout) {
+      onLogout();
+    } else {
+      removeAuthToken();
+      onNavigateLanding();
+    }
   };
 
   const copyText = (text: string, fieldId: string) => {
@@ -156,8 +162,10 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
               <Plus className="w-3.5 h-3.5" /> Buat Baru
             </button>
             <button onClick={handleLogout}
-              className="p-2 text-stone-500 hover:text-rose-600 cursor-pointer" title="Logout">
-              <LogOut className="w-4 h-4" />
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 text-xs font-medium rounded-full border border-rose-200/80 transition-colors cursor-pointer"
+              title="Keluar dari akun">
+              <LogOut className="w-3.5 h-3.5" />
+              <span>Keluar</span>
             </button>
           </div>
         </div>
