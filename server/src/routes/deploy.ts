@@ -150,7 +150,7 @@ router.post('/:id/publish', authenticateToken, async (req: AuthRequest, res: Res
 
     if (githubRepoId) {
       gitSourcePayload.repoId = githubRepoId;
-    } else if (projectData.link?.repoId) {
+    } else if (projectData?.link?.repoId) {
       gitSourcePayload.repoId = projectData.link.repoId;
     } else {
       gitSourcePayload.repo = githubRepo;
@@ -165,6 +165,7 @@ router.post('/:id/publish', authenticateToken, async (req: AuthRequest, res: Res
       body: JSON.stringify({
         name: projectName,
         project: vercelProjectId,
+        target: 'production',
         gitSource: gitSourcePayload,
       }),
     });
@@ -274,6 +275,23 @@ router.get('/:id/deploy-status', authenticateToken, async (req: AuthRequest, res
 
       if (deployInfo.readyState === 'READY') {
         newStatus = 'ready';
+
+        // Pastikan domain utama dialiaskan ke deployment production ini
+        if (invitation.deploymentUrl) {
+          const domainName = invitation.deploymentUrl.replace('https://', '').replace('/', '');
+          try {
+            await fetch(`https://api.vercel.com/v13/deployments/${invitation.latestDeploymentId}/aliases`, {
+              method: 'POST',
+              headers: {
+                Authorization: `Bearer ${vercelToken}`,
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({ alias: domainName }),
+            });
+          } catch (aliasErr) {
+            console.warn('Gagal assign alias domain Vercel:', aliasErr);
+          }
+        }
       } else if (deployInfo.readyState === 'ERROR' || deployInfo.readyState === 'CANCELED') {
         newStatus = 'failed';
       }
