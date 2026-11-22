@@ -226,6 +226,7 @@ const PlatformApp: React.FC = () => {
             onNavigateLanding={() => setPage('landing')}
             onCreateNew={() => { setEditInvitationId(null); setPage('builder'); }}
             onEditInvitation={handleEditInvitation}
+            onDeployInvitation={(id) => setDeployInvitationId(id)}
           />
         </ProtectedRoute>
       )}

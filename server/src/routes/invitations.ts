@@ -160,4 +160,44 @@ router.put('/:id', async (req: AuthRequest, res: Response): Promise<void> => {
   }
 });
 
+// POST /api/invitations/:id/submit-payment - User mengirim bukti transfer pembayaran
+router.post('/:id/submit-payment', async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const userId = req.user!.userId;
+    const id = req.params.id as string;
+    const { paymentProofUrl } = req.body;
+
+    if (!paymentProofUrl) {
+      res.status(400).json({ success: false, message: 'Bukti pembayaran (URL gambar) wajib disertakan' });
+      return;
+    }
+
+    const invitation = await prisma.invitation.findFirst({
+      where: { id, userId },
+    });
+
+    if (!invitation) {
+      res.status(404).json({ success: false, message: 'Undangan tidak ditemukan' });
+      return;
+    }
+
+    const updated = await prisma.invitation.update({
+      where: { id },
+      data: {
+        paymentProofUrl,
+        paymentStatus: 'pending_approval',
+      },
+    });
+
+    res.json({
+      success: true,
+      message: 'Bukti pembayaran berhasil dikirim! Menunggu konfirmasi dan persetujuan dari Admin.',
+      data: updated,
+    });
+  } catch (error: any) {
+    console.error('Error submit payment:', error);
+    res.status(500).json({ success: false, message: 'Gagal mengirim bukti pembayaran', error: error.message });
+  }
+});
+
 export default router;

@@ -74,6 +74,48 @@ router.get('/invitations', async (_req: Request, res: Response): Promise<void> =
 });
 
 // ==========================================
+// 2b. APPROVE / REJECT PEMBAYARAN OLEH ADMIN
+// PATCH /api/admin/invitations/:id/payment-status
+// ==========================================
+router.patch('/invitations/:id/payment-status', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const id = req.params.id as string;
+    const { status } = req.body; // 'approved' | 'rejected' | 'unpaid'
+
+    if (!['approved', 'rejected', 'unpaid', 'pending_approval'].includes(status)) {
+      res.status(400).json({ success: false, message: 'Status pembayaran tidak valid' });
+      return;
+    }
+
+    const invitation = await prisma.invitation.findUnique({ where: { id } });
+    if (!invitation) {
+      res.status(404).json({ success: false, message: 'Undangan tidak ditemukan' });
+      return;
+    }
+
+    const updated = await prisma.invitation.update({
+      where: { id },
+      data: {
+        paymentStatus: status,
+        paymentApprovedAt: status === 'approved' ? new Date() : null,
+      },
+      include: {
+        user: { select: { id: true, name: true, email: true } },
+      },
+    });
+
+    res.json({
+      success: true,
+      message: `Status pembayaran berhasil diubah menjadi '${status}'.`,
+      data: updated,
+    });
+  } catch (error: any) {
+    console.error('Error update payment status:', error);
+    res.status(500).json({ success: false, message: 'Gagal mengubah status pembayaran', error: error.message });
+  }
+});
+
+// ==========================================
 // 3. DAFTAR SELURUH USER
 // GET /api/admin/users
 // ==========================================

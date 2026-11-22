@@ -1,5 +1,7 @@
 export type Role = 'USER' | 'ADMIN';
 
+export type PaymentStatus = 'unpaid' | 'pending_approval' | 'approved' | 'rejected';
+
 export interface UserProfile {
   id: string;
   name: string;
@@ -22,6 +24,10 @@ export interface InvitationListItem {
   slug: string;
   templateKey: 'minimalist' | 'floral' | 'dark-luxury' | 'royal-vintage';
   deployStatus: 'draft' | 'building' | 'ready' | 'failed';
+  paymentStatus?: 'unpaid' | 'pending_approval' | 'approved' | 'rejected';
+  paymentProofUrl?: string | null;
+  paymentAmount?: number | null;
+  paymentApprovedAt?: string | null;
   deploymentUrl?: string;
   vercelProjectName?: string;
   publishedAt?: string;

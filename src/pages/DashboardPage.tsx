@@ -1,21 +1,25 @@
 import React, { useEffect, useState } from 'react';
 import {
   Heart, LogOut, Plus, ExternalLink, Edit3, Copy, Check,
-  Users, MessageSquare, ChevronDown, ChevronUp, RefreshCw, Link2, Send
+  Users, MessageSquare, ChevronDown, ChevronUp, RefreshCw, Link2, Send,
+  CreditCard
 } from 'lucide-react';
 import { apiRequest, removeAuthToken, getStoredUser } from '../lib/api';
 import { InvitationListItem, GuestWishItem } from '../types/api';
+import { PaymentModal } from '../components/PaymentModal';
 
 interface DashboardPageProps {
   onNavigateLanding: () => void;
   onCreateNew: () => void;
   onEditInvitation: (id: string) => void;
+  onDeployInvitation?: (id: string) => void;
 }
 
 export const DashboardPage: React.FC<DashboardPageProps> = ({
   onNavigateLanding,
   onCreateNew,
   onEditInvitation,
+  onDeployInvitation,
 }) => {
   const user = getStoredUser();
   const [invitations, setInvitations] = useState<InvitationListItem[]>([]);
@@ -25,6 +29,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   const [wishesLoading, setWishesLoading] = useState<Record<string, boolean>>({});
   const [guestLinkInputs, setGuestLinkInputs] = useState<Record<string, string>>({});
   const [copiedField, setCopiedField] = useState<string | null>(null);
+  const [payingInvitation, setPayingInvitation] = useState<InvitationListItem | null>(null);
 
   useEffect(() => {
     fetchInvitations();
@@ -77,6 +82,24 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   const generateGuestLink = (baseUrl: string, guestName: string) => {
     if (!guestName.trim()) return baseUrl;
     return `${baseUrl}?to=${encodeURIComponent(guestName.trim())}`;
+  };
+
+  const getPaymentBadge = (status?: string) => {
+    switch (status) {
+      case 'approved': return 'bg-emerald-50 text-emerald-700 border-emerald-300';
+      case 'pending_approval': return 'bg-amber-50 text-amber-700 border-amber-300 animate-pulse';
+      case 'rejected': return 'bg-rose-50 text-rose-700 border-rose-300';
+      default: return 'bg-stone-100 text-stone-600 border-stone-200';
+    }
+  };
+
+  const getPaymentLabel = (status?: string) => {
+    switch (status) {
+      case 'approved': return '✓ Bayar Disetujui';
+      case 'pending_approval': return '⏳ Menunggu Admin';
+      case 'rejected': return '✕ Bayar Ditolak';
+      default: return 'Belum Bayar';
+    }
   };
 
   const getStatusBadge = (status: string) => {
@@ -180,6 +203,9 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                           <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full border ${getStatusBadge(inv.deployStatus)}`}>
                             {getStatusLabel(inv.deployStatus)}
                           </span>
+                          <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full border ${getPaymentBadge(inv.paymentStatus)}`}>
+                            {getPaymentLabel(inv.paymentStatus)}
+                          </span>
                           <span className="text-[10px] px-2 py-0.5 rounded-full bg-stone-100 text-stone-600 border border-stone-200 capitalize">
                             {inv.templateKey}
                           </span>
@@ -190,6 +216,15 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                         </p>
                       </div>
                       <div className="flex items-center gap-2 flex-shrink-0">
+                        {inv.paymentStatus !== 'approved' && (
+                          <button
+                            onClick={() => setPayingInvitation(inv)}
+                            className="px-3 py-1.5 bg-gradient-to-r from-gold-600 to-gold-500 hover:from-gold-500 hover:to-gold-400 text-stone-950 text-xs font-semibold rounded-lg shadow-sm cursor-pointer flex items-center gap-1.5"
+                          >
+                            <CreditCard className="w-3.5 h-3.5" />
+                            {inv.paymentStatus === 'pending_approval' ? 'Cek Status Bayar' : 'Bayar Sekarang'}
+                          </button>
+                        )}
                         <button onClick={() => onEditInvitation(inv.id)}
                           className="p-2 text-stone-500 hover:text-gold-700 cursor-pointer" title="Edit"><Edit3 className="w-4 h-4" /></button>
                         {inv.deploymentUrl && (
@@ -314,6 +349,30 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
           </div>
         )}
       </div>
+
+      {/* Payment Modal */}
+      {payingInvitation && (
+        <PaymentModal
+          invitationId={payingInvitation.id}
+          slug={payingInvitation.slug}
+          paymentStatus={payingInvitation.paymentStatus || 'unpaid'}
+          paymentProofUrl={payingInvitation.paymentProofUrl}
+          onClose={() => setPayingInvitation(null)}
+          onSuccessSubmitted={() => {
+            fetchInvitations();
+            alert('Bukti pembayaran berhasil dikirim! Menunggu konfirmasi Admin.');
+          }}
+          onStartDeploy={() => {
+            const id = payingInvitation.id;
+            setPayingInvitation(null);
+            if (onDeployInvitation) {
+              onDeployInvitation(id);
+            } else {
+              onEditInvitation(id);
+            }
+          }}
+        />
+      )}
     </div>
   );
 };

@@ -80,6 +80,19 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
     }
   };
 
+  const handleUpdatePaymentStatus = async (invitationId: string, status: 'approved' | 'rejected' | 'unpaid') => {
+    try {
+      await apiRequest(`/api/admin/invitations/${invitationId}/payment-status`, {
+        method: 'PATCH',
+        body: JSON.stringify({ status }),
+      });
+      fetchInvitations();
+      fetchStats();
+    } catch (err: any) {
+      alert(err.message || 'Gagal mengubah status pembayaran');
+    }
+  };
+
   const fetchSongs = async () => {
     setLoadingSongs(true);
     try {
@@ -602,9 +615,10 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
                           <th className="px-4 py-3 font-semibold text-stone-700">Slug & Domain</th>
                           <th className="px-4 py-3 font-semibold text-stone-700">Pembuat (User)</th>
                           <th className="px-4 py-3 font-semibold text-stone-700">Tema</th>
+                          <th className="px-4 py-3 font-semibold text-stone-700">Status Pembayaran</th>
+                          <th className="px-4 py-3 font-semibold text-stone-700">Bukti Transfer</th>
                           <th className="px-4 py-3 font-semibold text-stone-700">Status Deploy</th>
-                          <th className="px-4 py-3 font-semibold text-stone-700">Tgl Dibuat</th>
-                          <th className="px-4 py-3 font-semibold text-stone-700">Aksi</th>
+                          <th className="px-4 py-3 font-semibold text-stone-700">Konfirmasi Admin</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-stone-100">
@@ -627,6 +641,42 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
                             </td>
                             <td className="px-4 py-3">
                               <span
+                                className={`text-[10px] font-bold px-2.5 py-1 rounded-full border ${
+                                  inv.paymentStatus === 'approved'
+                                    ? 'bg-emerald-100 text-emerald-800 border-emerald-300'
+                                    : inv.paymentStatus === 'pending_approval'
+                                    ? 'bg-amber-100 text-amber-800 border-amber-300 animate-pulse'
+                                    : inv.paymentStatus === 'rejected'
+                                    ? 'bg-rose-100 text-rose-800 border-rose-300'
+                                    : 'bg-stone-100 text-stone-600 border-stone-200'
+                                }`}
+                              >
+                                {inv.paymentStatus === 'approved'
+                                  ? '✅ Lunas / Approved'
+                                  : inv.paymentStatus === 'pending_approval'
+                                  ? '⏳ Menunggu Konfirmasi'
+                                  : inv.paymentStatus === 'rejected'
+                                  ? '❌ Ditolak'
+                                  : 'Belum Bayar'}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3">
+                              {inv.paymentProofUrl ? (
+                                <a
+                                  href={inv.paymentProofUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="inline-flex items-center gap-1 text-[11px] font-semibold text-gold-700 hover:text-gold-900 underline"
+                                >
+                                  <span>Lihat Bukti</span>
+                                  <ExternalLink className="w-3 h-3" />
+                                </a>
+                              ) : (
+                                <span className="text-stone-400 text-[11px] italic">Tidak ada</span>
+                              )}
+                            </td>
+                            <td className="px-4 py-3">
+                              <span
                                 className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${getStatusBadge(
                                   inv.deployStatus
                                 )}`}
@@ -634,27 +684,34 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
                                 {inv.deployStatus}
                               </span>
                             </td>
-                            <td className="px-4 py-3 text-stone-500 whitespace-nowrap">
-                              {new Date(inv.createdAt).toLocaleDateString('id-ID', {
-                                day: 'numeric',
-                                month: 'short',
-                                year: 'numeric',
-                              })}
-                            </td>
                             <td className="px-4 py-3 whitespace-nowrap">
-                              {inv.deploymentUrl ? (
-                                <a
-                                  href={inv.deploymentUrl}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="inline-flex items-center gap-1 px-2.5 py-1 bg-stone-900 hover:bg-gold-700 text-white rounded-lg text-[10px] font-semibold transition-colors"
-                                >
-                                  <span>Buka Web</span>
-                                  <ExternalLink className="w-3 h-3" />
-                                </a>
-                              ) : (
-                                <span className="text-stone-400 text-[11px] italic">Belum online</span>
-                              )}
+                              <div className="flex items-center gap-1.5">
+                                {inv.paymentStatus !== 'approved' ? (
+                                  <button
+                                    onClick={() => handleUpdatePaymentStatus(inv.id, 'approved')}
+                                    className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[10px] font-semibold transition-colors cursor-pointer shadow-sm"
+                                    title="Setujui Pembayaran dan izinkan deploy"
+                                  >
+                                    Approve
+                                  </button>
+                                ) : (
+                                  <button
+                                    onClick={() => handleUpdatePaymentStatus(inv.id, 'unpaid')}
+                                    className="px-2 py-1 bg-stone-100 hover:bg-stone-200 text-stone-600 rounded-lg text-[10px] transition-colors cursor-pointer"
+                                    title="Batalkan approval"
+                                  >
+                                    Batal Approve
+                                  </button>
+                                )}
+                                {inv.paymentStatus === 'pending_approval' && (
+                                  <button
+                                    onClick={() => handleUpdatePaymentStatus(inv.id, 'rejected')}
+                                    className="px-2.5 py-1 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-[10px] font-semibold transition-colors cursor-pointer"
+                                  >
+                                    Reject
+                                  </button>
+                                )}
+                              </div>
                             </td>
                           </tr>
                         ))}

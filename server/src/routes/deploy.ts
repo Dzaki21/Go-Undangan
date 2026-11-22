@@ -20,6 +20,16 @@ router.post('/:id/publish', authenticateToken, async (req: AuthRequest, res: Res
       return;
     }
 
+    // Validasi Pembayaran & Konfirmasi Admin sebelum bisa Publish/Deploy ke Vercel
+    if (invitation.paymentStatus !== 'approved') {
+      res.status(403).json({
+        success: false,
+        message: 'Undangan belum disetujui (approved) oleh Admin. Silakan lakukan pembayaran dan tunggu konfirmasi Admin sebelum publish.',
+        paymentStatus: invitation.paymentStatus,
+      });
+      return;
+    }
+
     const vercelToken = process.env.VERCEL_TOKEN;
     const githubRepo = process.env.GITHUB_REPO; // format: owner/repo
     const githubRepoId = process.env.GITHUB_REPO_ID;

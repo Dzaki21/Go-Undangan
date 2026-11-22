@@ -83,8 +83,6 @@ async function main() {
     });
     console.log(`✅ Template catalog siap: ${t.name} (${t.templateKey})`);
   }
-
-  // 3. Optional: Seeding initial Preset Songs jika kosong
   const songCount = await prisma.presetSong.count();
   if (songCount === 0) {
     const initialSongs = [

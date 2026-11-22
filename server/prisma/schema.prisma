@@ -26,6 +26,13 @@ enum Attendance {
   tidak_hadir
 }
 
+enum PaymentStatus {
+  unpaid
+  pending_approval
+  approved
+  rejected
+}
+
 model User {
   id           String       @id @default(uuid())
   name         String
@@ -50,6 +57,10 @@ model Invitation {
   latestDeploymentId String?
   deploymentUrl      String?
   deployStatus       DeployStatus @default(draft)
+  paymentStatus      PaymentStatus @default(unpaid)
+  paymentProofUrl    String?
+  paymentAmount      Int?          @default(99000)
+  paymentApprovedAt  DateTime?
   publishedAt        DateTime?
   createdAt          DateTime     @default(now())
   updatedAt          DateTime     @updatedAt

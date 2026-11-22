@@ -6,7 +6,8 @@ import {
 } from 'lucide-react';
 import { ThemeType } from '../themes';
 import { apiRequest, uploadMedia } from '../lib/api';
-import { MasterPresetsResponse, PresetSongItem, TemplateCatalogItem } from '../types/api';
+import { MasterPresetsResponse, PresetSongItem, TemplateCatalogItem, PaymentStatus } from '../types/api';
+import { PaymentModal } from '../components/PaymentModal';
 
 // ─── FALLBACK PRESET MUSIC LIST (jika backend offline) ───
 const fallbackMusicList: PresetSongItem[] = [
@@ -152,10 +153,19 @@ export const FormBuilderPage: React.FC<FormBuilderPageProps> = ({
   const [templateCatalogs, setTemplateCatalogs] = useState<TemplateCatalogItem[]>(fallbackTemplates);
   const [loadingPresets, setLoadingPresets] = useState<boolean>(true);
 
-  // Music preview
-  const [musicTab, setMusicTab] = useState<'preset' | 'custom'>('preset');
+  // Music preview & modals
   const [previewingId, setPreviewingId] = useState<string | null>(null);
   const audioPreviewRef = useRef<HTMLAudioElement | null>(null);
+  const [uploadingAudio, setUploadingAudio] = useState(false);
+  const [showPresetModal, setShowPresetModal] = useState(false);
+  const [showUploadModal, setShowUploadModal] = useState(false);
+  const [selectedPresetToConfirm, setSelectedPresetToConfirm] = useState<PresetSongItem | null>(null);
+  const [pendingUploadFile, setPendingUploadFile] = useState<File | null>(null);
+
+  // Payment status & modal
+  const [paymentStatus, setPaymentStatus] = useState<PaymentStatus>('unpaid');
+  const [paymentProofUrl, setPaymentProofUrl] = useState<string | null>(null);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
 
   // Fetch Master Presets
   useEffect(() => {
@@ -190,6 +200,8 @@ export const FormBuilderPage: React.FC<FormBuilderPageProps> = ({
             templateKey: inv.templateKey,
             ...content,
           });
+          if (inv.paymentStatus) setPaymentStatus(inv.paymentStatus);
+          if (inv.paymentProofUrl) setPaymentProofUrl(inv.paymentProofUrl);
         }
       }).catch(console.error);
     }
@@ -246,6 +258,19 @@ export const FormBuilderPage: React.FC<FormBuilderPageProps> = ({
         currentId = res.data.id;
         setInvitationId(currentId);
       }
+
+      // Refresh payment status data
+      const invRes = await apiRequest(`/api/invitations/${currentId}`);
+      const currentStatus: PaymentStatus = invRes.data?.paymentStatus || paymentStatus;
+      setPaymentStatus(currentStatus);
+      if (invRes.data?.paymentProofUrl) setPaymentProofUrl(invRes.data.paymentProofUrl);
+
+      // Cek apakah pembayaran sudah diapprove oleh admin
+      if (currentStatus !== 'approved') {
+        setShowPaymentModal(true);
+        return;
+      }
+
       onPublished(currentId!);
     } catch (err: any) {
       alert(err.message || 'Gagal menyimpan sebelum publish.');
@@ -270,15 +295,28 @@ export const FormBuilderPage: React.FC<FormBuilderPageProps> = ({
   };
 
   // ── Custom Music Upload ──
-  const handleMusicUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleMusicUploadFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    setPendingUploadFile(file);
+    setShowUploadModal(true);
+    // Reset file input value agar bisa pilih file yang sama kembali jika dibatalkan
+    e.target.value = '';
+  };
+
+  const confirmUploadMusic = async () => {
+    if (!pendingUploadFile) return;
+    setUploadingAudio(true);
     try {
-      const url = await uploadMedia(file);
-      updateForm({ music: { audioUrl: url, title: file.name.replace(/\.[^.]+$/, '') } });
-      setMusicTab('custom');
+      const url = await uploadMedia(pendingUploadFile);
+      updateForm({ music: { audioUrl: url, title: pendingUploadFile.name.replace(/\.[^.]+$/, '') } });
+      setShowUploadModal(false);
+      setPendingUploadFile(null);
+      alert('File musik MP3 kustom berhasil dipasang!');
     } catch {
-      alert('Gagal upload file audio.');
+      alert('Gagal upload file audio. Pastikan file valid.');
+    } finally {
+      setUploadingAudio(false);
     }
   };
 
@@ -382,51 +420,66 @@ export const FormBuilderPage: React.FC<FormBuilderPageProps> = ({
 
             <SectionCard title="Musik Latar" subtitle="Pilih lagu preset dari katalog atau upload file .mp3 kustom">
               <audio ref={audioPreviewRef} preload="none" />
-              <div className="flex border-b border-stone-200 mb-4">
-                <button type="button" onClick={() => setMusicTab('preset')}
-                  className={`px-4 py-2 text-xs font-semibold transition-colors cursor-pointer ${musicTab === 'preset' ? 'border-b-2 border-gold-500 text-gold-700' : 'text-stone-500 hover:text-stone-700'}`}>
-                  <Music className="w-3.5 h-3.5 inline mr-1.5" />Daftar Lagu Preset ({presetSongs.length})
-                </button>
-                <button type="button" onClick={() => setMusicTab('custom')}
-                  className={`px-4 py-2 text-xs font-semibold transition-colors cursor-pointer ${musicTab === 'custom' ? 'border-b-2 border-gold-500 text-gold-700' : 'text-stone-500 hover:text-stone-700'}`}>
-                  <Upload className="w-3.5 h-3.5 inline mr-1.5" />Upload MP3 Custom
-                </button>
+              
+              {/* Musik yang sedang aktif */}
+              <div className="bg-stone-50 border border-stone-200/80 rounded-2xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-gold-100 border border-gold-300 text-gold-800 flex items-center justify-center flex-shrink-0">
+                    <Music className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <span className="text-[10px] uppercase font-bold tracking-wider text-stone-500">Lagu Terpasang Saat Ini</span>
+                    <h4 className="text-sm font-bold text-stone-900">{form.music.title || 'Belum dipilih'}</h4>
+                  </div>
+                </div>
+                {form.music.audioUrl && (
+                  <button
+                    type="button"
+                    onClick={() => togglePreview('active-song', form.music.audioUrl)}
+                    className="px-3 py-1.5 bg-stone-900 hover:bg-gold-700 text-white rounded-full text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
+                  >
+                    {previewingId === 'active-song' ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
+                    <span>{previewingId === 'active-song' ? 'Pause' : 'Dengarkan Lagu'}</span>
+                  </button>
+                )}
               </div>
 
-              {musicTab === 'preset' ? (
-                <div className="space-y-2">
-                  {presetSongs.map(m => (
-                    <div key={m.id}
-                      className={`flex items-center justify-between gap-3 p-3 rounded-xl border transition-all ${form.music.audioUrl === m.audioUrl ? 'border-gold-500 bg-gold-50' : 'border-stone-200 hover:bg-stone-50'}`}>
-                      <div className="flex items-center gap-3 flex-1 min-w-0">
-                        <button type="button" onClick={() => togglePreview(m.id, m.audioUrl)}
-                          className="w-8 h-8 rounded-full bg-stone-900 text-white flex items-center justify-center flex-shrink-0 cursor-pointer hover:bg-gold-700 transition-colors">
-                          {previewingId === m.id ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5 ml-0.5" />}
-                        </button>
-                        <div className="min-w-0">
-                          <span className="text-xs sm:text-sm text-stone-800 font-medium block truncate">{m.title}</span>
-                          {m.artist && <span className="text-[10px] text-stone-400 block truncate">{m.artist}</span>}
-                        </div>
-                      </div>
-                      <button type="button" onClick={() => { updateForm({ music: { audioUrl: m.audioUrl, title: m.title } }); }}
-                        className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer ${form.music.audioUrl === m.audioUrl ? 'bg-gold-600 text-white' : 'bg-stone-100 text-stone-700 hover:bg-stone-200'}`}>
-                        {form.music.audioUrl === m.audioUrl ? 'Terpilih ✓' : 'Pilih'}
-                      </button>
+              {/* Dua Opsi Pilihan Lagu dengan Popup Dialog */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {/* Opsi 1: Buka Popup Daftar Preset */}
+                <div className="border border-stone-200 rounded-2xl p-4 bg-white flex flex-col justify-between space-y-3 hover:border-gold-400 transition-colors">
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2 text-stone-800 font-semibold text-xs sm:text-sm">
+                      <Music className="w-4 h-4 text-gold-600" />
+                      <span>Katalog Lagu Preset</span>
                     </div>
-                  ))}
+                    <p className="text-[11px] text-stone-500">Pilih dari {presetSongs.length} lagu pernikahan romantis siap pakai.</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setShowPresetModal(true)}
+                    className="w-full py-2.5 px-4 bg-stone-100 hover:bg-stone-200 text-stone-800 text-xs font-semibold rounded-xl border border-stone-200 transition-all cursor-pointer flex items-center justify-center gap-2"
+                  >
+                    <span>Pilih dari Preset ({presetSongs.length})</span>
+                  </button>
                 </div>
-              ) : (
-                <div className="space-y-3">
-                  <input type="file" accept="audio/*,.mp3" onChange={handleMusicUpload}
-                    className="block w-full text-sm text-stone-600 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-stone-100 file:text-stone-700 hover:file:bg-stone-200 cursor-pointer" />
-                  {form.music.audioUrl && !presetSongs.some(p => p.audioUrl === form.music.audioUrl) && (
-                    <div className="text-xs text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-xl p-3 flex items-center gap-2">
-                      <Check className="w-4 h-4" />
-                      <span>File custom terpasang: <strong>{form.music.title || 'custom audio'}</strong></span>
+
+                {/* Opsi 2: Buka Upload MP3 Custom */}
+                <div className="border border-stone-200 rounded-2xl p-4 bg-white flex flex-col justify-between space-y-3 hover:border-gold-400 transition-colors">
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2 text-stone-800 font-semibold text-xs sm:text-sm">
+                      <Upload className="w-4 h-4 text-gold-600" />
+                      <span>Upload Lagu MP3 Kustom</span>
                     </div>
-                  )}
+                    <p className="text-[11px] text-stone-500">Gunakan file audio Anda sendiri dengan konfirmasi pratinjau.</p>
+                  </div>
+                  <label className="w-full py-2.5 px-4 bg-gradient-to-r from-gold-600 to-gold-500 hover:from-gold-500 hover:to-gold-400 text-stone-950 text-xs font-semibold rounded-xl shadow-sm transition-all cursor-pointer flex items-center justify-center gap-2 text-center">
+                    <Upload className="w-4 h-4" />
+                    <span>Pilih File MP3</span>
+                    <input type="file" accept="audio/*,.mp3" onChange={handleMusicUploadFileSelect} className="hidden" />
+                  </label>
                 </div>
-              )}
+              </div>
             </SectionCard>
           </div>
         );
@@ -737,6 +790,205 @@ export const FormBuilderPage: React.FC<FormBuilderPageProps> = ({
           </div>
         </div>
       </div>
+
+      {/* ════════════════════════════════════════════════════════════════ */}
+      {/* ─── MODAL 1: PILIH DAFTAR LAGU PRESET ──────────────────────── */}
+      {/* ════════════════════════════════════════════════════════════════ */}
+      {showPresetModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-stone-950/70 backdrop-blur-sm p-4 animate-fade-in">
+          <div className="bg-white rounded-3xl border border-stone-200 shadow-2xl w-full max-w-lg overflow-hidden flex flex-col max-h-[85vh]">
+            <div className="p-5 border-b border-stone-100 flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-full bg-gold-100 text-gold-800 flex items-center justify-center">
+                  <Music className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="font-serif font-bold text-base text-stone-900">Pilih Lagu Preset</h3>
+                  <p className="text-[11px] text-stone-500">Dengarkan dan konfirmasi lagu latar undangan Anda</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  audioPreviewRef.current?.pause();
+                  setPreviewingId(null);
+                  setShowPresetModal(false);
+                }}
+                className="p-1.5 text-stone-400 hover:text-stone-700 rounded-full hover:bg-stone-100 cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-5 overflow-y-auto space-y-2.5 flex-1">
+              {presetSongs.map((m) => (
+                <div
+                  key={m.id}
+                  className={`flex items-center justify-between gap-3 p-3.5 rounded-2xl border transition-all ${
+                    (selectedPresetToConfirm?.id === m.id || (!selectedPresetToConfirm && form.music.audioUrl === m.audioUrl))
+                      ? 'border-gold-500 bg-gold-50/70 shadow-sm'
+                      : 'border-stone-200 hover:border-stone-300 bg-stone-50/50'
+                  }`}
+                >
+                  <div className="flex items-center gap-3 min-w-0 flex-1">
+                    <button
+                      type="button"
+                      onClick={() => togglePreview(m.id, m.audioUrl)}
+                      className="w-9 h-9 rounded-full bg-stone-900 text-white flex items-center justify-center flex-shrink-0 cursor-pointer hover:bg-gold-700 transition-colors shadow-sm"
+                    >
+                      {previewingId === m.id ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4 ml-0.5" />}
+                    </button>
+                    <div className="min-w-0">
+                      <span className="text-xs sm:text-sm font-semibold text-stone-800 block truncate">{m.title}</span>
+                      <span className="text-[11px] text-stone-400 block truncate">{m.artist || 'Wedding Studio'}</span>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedPresetToConfirm(m)}
+                    className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+                      (selectedPresetToConfirm?.id === m.id || (!selectedPresetToConfirm && form.music.audioUrl === m.audioUrl))
+                        ? 'bg-gold-600 text-white shadow-sm'
+                        : 'bg-white text-stone-700 hover:bg-stone-100 border border-stone-200'
+                    }`}
+                  >
+                    {(selectedPresetToConfirm?.id === m.id || (!selectedPresetToConfirm && form.music.audioUrl === m.audioUrl))
+                      ? 'Dipilih ✓'
+                      : 'Pilih'}
+                  </button>
+                </div>
+              ))}
+            </div>
+
+            <div className="p-4 bg-stone-50 border-t border-stone-100 flex items-center justify-end gap-2.5">
+              <button
+                type="button"
+                onClick={() => {
+                  audioPreviewRef.current?.pause();
+                  setPreviewingId(null);
+                  setShowPresetModal(false);
+                }}
+                className="px-4 py-2 text-xs font-semibold text-stone-600 hover:text-stone-800 rounded-full cursor-pointer"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  if (selectedPresetToConfirm) {
+                    updateForm({ music: { audioUrl: selectedPresetToConfirm.audioUrl, title: selectedPresetToConfirm.title } });
+                  }
+                  audioPreviewRef.current?.pause();
+                  setPreviewingId(null);
+                  setShowPresetModal(false);
+                }}
+                className="px-5 py-2 bg-gradient-to-r from-gold-600 to-gold-500 hover:from-gold-500 hover:to-gold-400 text-stone-950 text-xs font-semibold rounded-full shadow-md cursor-pointer"
+              >
+                Konfirmasi Pilihan Lagu
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ════════════════════════════════════════════════════════════════ */}
+      {/* ─── MODAL 2: KONFIRMASI UPLOAD MP3 KUSTOM ───────────────────── */}
+      {/* ════════════════════════════════════════════════════════════════ */}
+      {showUploadModal && pendingUploadFile && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-stone-950/70 backdrop-blur-sm p-4 animate-fade-in">
+          <div className="bg-white rounded-3xl border border-stone-200 shadow-2xl w-full max-w-md overflow-hidden">
+            <div className="p-5 border-b border-stone-100 flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-full bg-gold-100 text-gold-800 flex items-center justify-center">
+                  <Upload className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="font-serif font-bold text-base text-stone-900">Konfirmasi Upload Musik</h3>
+                  <p className="text-[11px] text-stone-500">Periksa file sebelum diunggah ke server</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  if (!uploadingAudio) {
+                    setShowUploadModal(false);
+                    setPendingUploadFile(null);
+                  }
+                }}
+                disabled={uploadingAudio}
+                className="p-1.5 text-stone-400 hover:text-stone-700 rounded-full hover:bg-stone-100 cursor-pointer disabled:opacity-40"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-4">
+              <div className="p-4 bg-stone-50 rounded-2xl border border-stone-200/80 space-y-2">
+                <span className="text-[10px] uppercase font-bold text-stone-400 tracking-wider">File Dipilih</span>
+                <p className="text-sm font-semibold text-stone-900 break-words">{pendingUploadFile.name}</p>
+                <p className="text-xs text-stone-500">
+                  Ukuran: {(pendingUploadFile.size / (1024 * 1024)).toFixed(2)} MB
+                </p>
+              </div>
+
+              <p className="text-xs text-stone-600 leading-relaxed font-light">
+                File audio ini akan diunggah ke penyimpanan cloud dan otomatis disetel sebagai musik latar undangan pernikahan Anda.
+              </p>
+            </div>
+
+            <div className="p-4 bg-stone-50 border-t border-stone-100 flex items-center justify-end gap-2.5">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowUploadModal(false);
+                  setPendingUploadFile(null);
+                }}
+                disabled={uploadingAudio}
+                className="px-4 py-2 text-xs font-semibold text-stone-600 hover:text-stone-800 rounded-full cursor-pointer disabled:opacity-40"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                onClick={confirmUploadMusic}
+                disabled={uploadingAudio}
+                className="px-5 py-2 bg-gradient-to-r from-gold-600 to-gold-500 hover:from-gold-500 hover:to-gold-400 text-stone-950 text-xs font-semibold rounded-full shadow-md transition-all cursor-pointer disabled:opacity-50 flex items-center gap-2"
+              >
+                {uploadingAudio ? (
+                  <>
+                    <span className="w-3.5 h-3.5 border-2 border-stone-950 border-t-transparent rounded-full animate-spin" />
+                    <span>Mengunggah...</span>
+                  </>
+                ) : (
+                  <>
+                    <Check className="w-4 h-4" />
+                    <span>Upload & Terapkan File Ini</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── POPUP MODAL 3: PAYMENT & ADMIN APPROVAL ── */}
+      {showPaymentModal && invitationId && (
+        <PaymentModal
+          invitationId={invitationId}
+          slug={form.slug}
+          paymentStatus={paymentStatus}
+          paymentProofUrl={paymentProofUrl}
+          onClose={() => setShowPaymentModal(false)}
+          onSuccessSubmitted={async () => {
+            setPaymentStatus('pending_approval');
+            alert('Bukti pembayaran berhasil dikirim! Menunggu konfirmasi dan approval dari Admin.');
+          }}
+          onStartDeploy={() => {
+            setShowPaymentModal(false);
+            onPublished(invitationId);
+          }}
+        />
+      )}
     </div>
   );
 };
