@@ -33,9 +33,14 @@ router.post('/:id/publish', authenticateToken, async (req: AuthRequest, res: Res
       return;
     }
 
-    // Buat nama project Vercel: undangan-{slug}-{random4char}
-    const randomSuffix = crypto.randomBytes(2).toString('hex'); // 4 karakter heksadesimal
-    const projectName = `undangan-${invitation.slug}-${randomSuffix}`.toLowerCase().replace(/[^a-z0-9-]/g, '-').slice(0, 95);
+    // Cek apakah undangan sudah memiliki project Vercel yang pernah dibuat sebelumnya
+    let vercelProjectId = invitation.vercelProjectId;
+    let projectName = invitation.vercelProjectName;
+
+    // Jika belum pernah punya project, tentukan nama project permanen: undangan-{slug}
+    if (!projectName) {
+      projectName = `undangan-${invitation.slug}`.toLowerCase().replace(/[^a-z0-9-]/g, '-').slice(0, 95);
+    }
 
     // Siapkan data VITE_INVITATION_DATA yang akan disuntikkan ke environment variable Vercel
     const content = typeof invitation.contentJson === 'string'
@@ -56,48 +61,85 @@ router.post('/:id/publish', authenticateToken, async (req: AuthRequest, res: Res
       data: { deployStatus: 'building' },
     });
 
-    // 1. Buat Vercel Project baru (POST https://api.vercel.com/v10/projects)
-    const createProjectRes = await fetch('https://api.vercel.com/v10/projects', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${vercelToken}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        name: projectName,
-        framework: 'vite',
-        gitRepository: {
-          type: 'github',
-          repo: githubRepo,
+    let projectData: any = null;
+
+    // 1. Buat project baru jika belum ada, ATAU perbarui environment variable jika project sudah ada
+    if (!vercelProjectId) {
+      const createProjectRes = await fetch('https://api.vercel.com/v10/projects', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${vercelToken}`,
+          'Content-Type': 'application/json',
         },
-        environmentVariables: [
-          {
+        body: JSON.stringify({
+          name: projectName,
+          framework: 'vite',
+          gitRepository: {
+            type: 'github',
+            repo: githubRepo,
+          },
+          environmentVariables: [
+            {
+              key: 'VITE_INVITATION_DATA',
+              target: ['production', 'preview', 'development'],
+              type: 'plain',
+              value: stringifiedClientData,
+            },
+          ],
+        }),
+      });
+
+      projectData = (await createProjectRes.json()) as any;
+
+      if (!createProjectRes.ok) {
+        // Jika project dengan nama tersebut sudah ada di Vercel (misal dari sisa publish lama), coba ambil ID-nya
+        if (projectData.error?.code === 'conflict' || projectData.error?.message?.includes('already exists')) {
+          const getProj = await fetch(`https://api.vercel.com/v9/projects/${projectName}`, {
+            headers: { Authorization: `Bearer ${vercelToken}` },
+          });
+          if (getProj.ok) {
+            projectData = await getProj.json();
+            vercelProjectId = projectData.id;
+          }
+        }
+
+        if (!vercelProjectId) {
+          console.error('Gagal membuat project Vercel:', projectData);
+          await prisma.invitation.update({
+            where: { id: invitation.id },
+            data: { deployStatus: 'failed' },
+          });
+          res.status(502).json({
+            success: false,
+            message: 'Gagal membuat project di Vercel',
+            error: projectData,
+          });
+          return;
+        }
+      } else {
+        vercelProjectId = projectData.id;
+      }
+    } else {
+      // Jika project sudah ada di Vercel, perbarui / upsert environment variable VITE_INVITATION_DATA
+      try {
+        await fetch(`https://api.vercel.com/v10/projects/${vercelProjectId}/env?upsert=true`, {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${vercelToken}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
             key: 'VITE_INVITATION_DATA',
             target: ['production', 'preview', 'development'],
             type: 'plain',
             value: stringifiedClientData,
-          },
-        ],
-      }),
-    });
-
-    const projectData = (await createProjectRes.json()) as any;
-
-    if (!createProjectRes.ok) {
-      console.error('Gagal membuat project Vercel:', projectData);
-      await prisma.invitation.update({
-        where: { id: invitation.id },
-        data: { deployStatus: 'failed' },
-      });
-      res.status(502).json({
-        success: false,
-        message: 'Gagal membuat project di Vercel',
-        error: projectData,
-      });
-      return;
+          }),
+        });
+      } catch (err) {
+        console.warn('Gagal upsert env Vercel:', err);
+      }
     }
 
-    const vercelProjectId = projectData.id;
     const deploymentUrl = `https://${projectName}.vercel.app`;
 
     // 2. Trigger deployment (POST https://api.vercel.com/v13/deployments)
