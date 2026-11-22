@@ -7,6 +7,7 @@ import {
 import { apiRequest, removeAuthToken, getStoredUser } from '../lib/api';
 import { InvitationListItem, GuestWishItem } from '../types/api';
 import { PaymentModal } from '../components/PaymentModal';
+import { LogoutConfirmModal } from '../components/LogoutConfirmModal';
 
 interface DashboardPageProps {
   onNavigateLanding: () => void;
@@ -32,6 +33,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   const [guestLinkInputs, setGuestLinkInputs] = useState<Record<string, string>>({});
   const [copiedField, setCopiedField] = useState<string | null>(null);
   const [payingInvitation, setPayingInvitation] = useState<InvitationListItem | null>(null);
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
 
   useEffect(() => {
     fetchInvitations();
@@ -161,7 +163,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
               className="px-4 py-2 bg-gradient-to-r from-gold-600 to-gold-500 hover:from-gold-500 hover:to-gold-400 text-stone-950 text-xs font-semibold rounded-full shadow-md cursor-pointer flex items-center gap-1.5">
               <Plus className="w-3.5 h-3.5" /> Buat Baru
             </button>
-            <button onClick={handleLogout}
+            <button onClick={() => setShowLogoutModal(true)}
               className="flex items-center gap-1.5 px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 text-xs font-medium rounded-full border border-rose-200/80 transition-colors cursor-pointer"
               title="Keluar dari akun">
               <LogOut className="w-3.5 h-3.5" />
@@ -381,6 +383,15 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
           }}
         />
       )}
+      {/* Logout Confirmation Modal */}
+      <LogoutConfirmModal
+        isOpen={showLogoutModal}
+        onClose={() => setShowLogoutModal(false)}
+        onConfirm={() => {
+          setShowLogoutModal(false);
+          handleLogout();
+        }}
+      />
     </div>
   );
 };

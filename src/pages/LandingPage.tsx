@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Sparkles, Heart, ArrowRight, ShieldCheck, Zap, Globe, Music, Smartphone, Eye, LogOut } from 'lucide-react';
 import { ThemeType } from '../themes';
 import { TemplatePreviewModal } from '../components/TemplatePreviewModal';
+import { LogoutConfirmModal } from '../components/LogoutConfirmModal';
 
 interface LandingPageProps {
   onSelectTemplate: (template: ThemeType) => void;
@@ -19,6 +20,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
   isLoggedIn,
 }) => {
   const [previewTheme, setPreviewTheme] = useState<ThemeType | null>(null);
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
 
   const templateCards: {
     id: ThemeType;
@@ -93,7 +95,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                 </button>
                 {onLogout && (
                   <button
-                    onClick={onLogout}
+                    onClick={() => setShowLogoutModal(true)}
                     className="p-2 text-stone-500 hover:text-rose-600 rounded-full hover:bg-rose-50 transition-colors cursor-pointer"
                     title="Logout"
                   >
@@ -279,6 +281,15 @@ export const LandingPage: React.FC<LandingPageProps> = ({
           }}
         />
       )}
+      {/* Logout Confirmation Modal */}
+      <LogoutConfirmModal
+        isOpen={showLogoutModal}
+        onClose={() => setShowLogoutModal(false)}
+        onConfirm={() => {
+          setShowLogoutModal(false);
+          onLogout?.();
+        }}
+      />
     </div>
   );
 };
