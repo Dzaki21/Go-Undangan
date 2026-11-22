@@ -41,12 +41,51 @@ const isInvitationMode = (): boolean => {
 // ─── INVITATION TEMPLATE VIEW (produksi .vercel.app) ─
 // ═══════════════════════════════════════════════════
 const InvitationView: React.FC = () => {
-  const data = getInvitationData();
+  const initialData = getInvitationData();
+  const [data, setData] = useState(initialData);
   const [isOpen, setIsOpen] = useState(false);
   const [guestName, setGuestName] = useState('Tamu Undangan');
   const [isPlaying, setIsPlaying] = useState(false);
   const [activeTheme, setActiveTheme] = useState<ThemeType>(data.theme || 'minimalist');
   const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  // Ambil data terbaru secara dinamis dari API server jika tersedia
+  useEffect(() => {
+    const slug = initialData.slug || (typeof window !== 'undefined' ? window.location.hostname.replace('undangan-', '').replace('.vercel.app', '') : null);
+    const apiBase = initialData.apiBaseUrl || 'https://go-undangan-api.up.railway.app' || 'http://localhost:5000';
+
+    if (slug) {
+      fetch(`${apiBase}/api/public/wishes/invitation/${slug}`)
+        .then(r => r.json())
+        .then(res => {
+          if (res.success && res.data) {
+            setData(prev => ({
+              ...prev,
+              ...res.data,
+              quote: { ...prev.quote, ...(res.data.quote || {}) },
+              groom: { ...prev.groom, ...(res.data.groom || {}) },
+              bride: { ...prev.bride, ...(res.data.bride || {}) },
+              events: {
+                akad: { ...prev.events.akad, ...(res.data.events?.akad || {}) },
+                resepsi: res.data.events?.resepsi
+                  ? { ...prev.events.resepsi, ...res.data.events.resepsi }
+                  : prev.events.resepsi,
+              },
+              gifts: {
+                accounts: res.data.gifts?.accounts ?? prev.gifts?.accounts ?? [],
+                physicalGift: res.data.gifts?.physicalGift ?? prev.gifts?.physicalGift,
+              },
+            }));
+            if (res.data.theme && themes[res.data.theme as ThemeType]) {
+              setActiveTheme(res.data.theme as ThemeType);
+            }
+          }
+        })
+        .catch(() => {
+          // Fallback ke data bundel jika offline
+        });
+    }
+  }, []);
 
   const currentThemeConfig = themes[activeTheme] || themes.minimalist;
 

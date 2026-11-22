@@ -77,4 +77,57 @@ router.post('/:invitationId', async (req: Request, res: Response): Promise<void>
   }
 });
 
+// GET /api/public/wishes/invitation/:slug - Ambil data konten undangan publik secara realtime berdasarkan slug
+router.get('/invitation/:slug', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const slug = req.params.slug as string;
+
+    const invitation = await prisma.invitation.findUnique({
+      where: { slug },
+      include: {
+        wishes: {
+          orderBy: { createdAt: 'desc' },
+          take: 50,
+        },
+      },
+    });
+
+    if (!invitation) {
+      res.status(404).json({ success: false, message: 'Undangan tidak ditemukan' });
+      return;
+    }
+
+    const content = typeof invitation.contentJson === 'string'
+      ? JSON.parse(invitation.contentJson)
+      : invitation.contentJson;
+
+    const fullData = {
+      ...content,
+      theme: invitation.templateKey,
+      invitationId: invitation.id,
+      slug: invitation.slug,
+      defaultComments: invitation.wishes.map(w => ({
+        id: w.id,
+        name: w.guestName,
+        attendance: w.attendance,
+        guestCount: w.guestCount || 1,
+        message: w.message,
+        createdAt: new Date(w.createdAt).toLocaleDateString('id-ID', {
+          day: 'numeric',
+          month: 'short',
+          year: 'numeric',
+        }),
+      })),
+    };
+
+    res.json({
+      success: true,
+      data: fullData,
+    });
+  } catch (error: any) {
+    console.error('Error get public invitation data:', error);
+    res.status(500).json({ success: false, message: 'Gagal mengambil data undangan publik', error: error.message });
+  }
+});
+
 export default router;

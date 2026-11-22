@@ -77,4 +77,7 @@ export interface InvitationData {
     physicalGift?: PhysicalGift;
   };
   defaultComments?: RsvpComment[];
+  invitationId?: string;
+  slug?: string;
+  apiBaseUrl?: string;
 }

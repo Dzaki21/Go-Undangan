@@ -104,15 +104,15 @@ async function main() {
     for (const song of initialSongs) {
       await prisma.presetSong.create({ data: song });
     }
-    console.log(`✅ Berhasil menambahkan ${initialSongs.length} preset songs awal.`);
+    console.log(` Berhasil menambahkan ${initialSongs.length} preset songs awal.`);
   }
 
-  console.log('🎉 Seeding selesai dengan sukses!');
+  console.log(' Seeding selesai dengan sukses!');
 }
 
 main()
   .catch((e) => {
-    console.error('❌ Terjadi error saat seeding:', e);
+    console.error(' Terjadi error saat seeding:', e);
     process.exit(1);
   })
   .finally(async () => {
