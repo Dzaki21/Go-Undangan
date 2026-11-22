@@ -9,7 +9,7 @@ const router = Router();
 router.post('/:id/publish', authenticateToken, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const userId = req.user!.userId;
-    const { id } = req.params;
+    const id = req.params.id as string;
 
     const invitation = await prisma.invitation.findFirst({
       where: { id, userId },
@@ -22,6 +22,7 @@ router.post('/:id/publish', authenticateToken, async (req: AuthRequest, res: Res
 
     const vercelToken = process.env.VERCEL_TOKEN;
     const githubRepo = process.env.GITHUB_REPO; // format: owner/repo
+    const githubRepoId = process.env.GITHUB_REPO_ID;
     const apiBaseUrl = process.env.API_BASE_URL || 'http://localhost:5000';
 
     if (!vercelToken || !githubRepo) {
@@ -100,6 +101,19 @@ router.post('/:id/publish', authenticateToken, async (req: AuthRequest, res: Res
     const deploymentUrl = `https://${projectName}.vercel.app`;
 
     // 2. Trigger deployment (POST https://api.vercel.com/v13/deployments)
+    const gitSourcePayload: any = {
+      type: 'github',
+      ref: 'main', // Default branch
+    };
+
+    if (githubRepoId) {
+      gitSourcePayload.repoId = githubRepoId;
+    } else if (projectData.link?.repoId) {
+      gitSourcePayload.repoId = projectData.link.repoId;
+    } else {
+      gitSourcePayload.repo = githubRepo;
+    }
+
     const deployRes = await fetch('https://api.vercel.com/v13/deployments', {
       method: 'POST',
       headers: {
@@ -109,15 +123,25 @@ router.post('/:id/publish', authenticateToken, async (req: AuthRequest, res: Res
       body: JSON.stringify({
         name: projectName,
         project: vercelProjectId,
-        gitSource: {
-          type: 'github',
-          repo: githubRepo,
-          ref: 'main', // Default branch
-        },
+        gitSource: gitSourcePayload,
       }),
     });
 
     const deployData = (await deployRes.json()) as any;
+
+    if (!deployRes.ok) {
+      console.error('Gagal mentrigger deploy Vercel:', deployData);
+      await prisma.invitation.update({
+        where: { id: invitation.id },
+        data: { deployStatus: 'failed' },
+      });
+      res.status(502).json({
+        success: false,
+        message: 'Gagal memicu deployment di Vercel: ' + (deployData.error?.message || 'Error tidak diketahui'),
+        error: deployData,
+      });
+      return;
+    }
     const latestDeploymentId = deployData.id || null;
 
     // 3. Simpan state deployment ke database
@@ -159,7 +183,7 @@ router.post('/:id/publish', authenticateToken, async (req: AuthRequest, res: Res
 router.get('/:id/deploy-status', authenticateToken, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const userId = req.user!.userId;
-    const { id } = req.params;
+    const id = req.params.id as string;
 
     const invitation = await prisma.invitation.findFirst({
       where: { id, userId },

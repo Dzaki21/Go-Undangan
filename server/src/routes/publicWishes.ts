@@ -6,7 +6,7 @@ const router = Router();
 // GET /api/public/wishes/:invitationId - Daftar ucapan doa tamu untuk undangan tertentu
 router.get('/:invitationId', async (req: Request, res: Response): Promise<void> => {
   try {
-    const { invitationId } = req.params;
+    const invitationId = req.params.invitationId as string;
 
     // Verifikasi apakah invitation ada
     const invitation = await prisma.invitation.findUnique({
@@ -38,7 +38,7 @@ router.get('/:invitationId', async (req: Request, res: Response): Promise<void> 
 // POST /api/public/wishes/:invitationId - Kirim RSVP & ucapan tamu baru
 router.post('/:invitationId', async (req: Request, res: Response): Promise<void> => {
   try {
-    const { invitationId } = req.params;
+    const invitationId = req.params.invitationId as string;
     const { guestName, attendance = 'hadir', guestCount = 1, message } = req.body;
 
     if (!guestName || !message) {

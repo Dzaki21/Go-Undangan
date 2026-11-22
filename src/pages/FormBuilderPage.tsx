@@ -6,12 +6,19 @@ import {
 } from 'lucide-react';
 import { ThemeType } from '../themes';
 import { apiRequest, uploadMedia } from '../lib/api';
+import { MasterPresetsResponse, PresetSongItem, TemplateCatalogItem } from '../types/api';
 
-// ─── PRESET MUSIC LIST ───
-const presetMusicList = [
-  { id: 'preset-1', title: 'Acoustic Wedding Harmony', url: 'https://cdn.pixabay.com/download/audio/2022/05/16/audio_c97698a3c8.mp3?filename=acoustic-guitars-ambient-uplifting-112191.mp3' },
-  { id: 'preset-2', title: 'Romantic Piano Ballad', url: 'https://cdn.pixabay.com/download/audio/2022/02/23/audio_476e019bd5.mp3?filename=beautiful-piano-114919.mp3' },
-  { id: 'preset-3', title: 'Dreamy Ambient Love', url: 'https://cdn.pixabay.com/download/audio/2024/11/04/audio_72d59fcb4e.mp3?filename=ambient-sleep-music-270055.mp3' },
+// ─── FALLBACK PRESET MUSIC LIST (jika backend offline) ───
+const fallbackMusicList: PresetSongItem[] = [
+  { id: 'preset-1', title: 'Acoustic Wedding Harmony', audioUrl: '/audio/wedding-song.mp3' },
+  { id: 'preset-2', title: 'Romantic Piano Ballad', audioUrl: 'https://raw.githubusercontent.com/rafaelreis-hotmart/Audio-Sample-files/master/sample.mp3' },
+  { id: 'preset-3', title: 'Dreamy Ambient Love', audioUrl: '/audio/wedding-song.mp3' },
+];
+
+const fallbackTemplates: TemplateCatalogItem[] = [
+  { id: '1', templateKey: 'minimalist', name: 'Minimalist Warm', description: 'Dominan putih/krem hangat.', thumbnailUrl: '' },
+  { id: '2', templateKey: 'floral', name: 'Soft Floral Sage', description: 'Nuansa sage green & dedaunan.', thumbnailUrl: '' },
+  { id: '3', templateKey: 'dark-luxury', name: 'Dark Luxury & Gold', description: 'Latar hitam dengan kilau emas.', thumbnailUrl: '' },
 ];
 
 // ─── STEP DEFINITIONS ───
@@ -31,7 +38,7 @@ function createDefaultForm(templateKey: ThemeType) {
   return {
     slug: '',
     templateKey,
-    music: { audioUrl: presetMusicList[0].url, title: presetMusicList[0].title },
+    music: { audioUrl: fallbackMusicList[0].audioUrl, title: fallbackMusicList[0].title },
     meta: { title: '', description: '' },
     eventDateIso: '',
     quote: { text: '', source: '' },
@@ -139,10 +146,36 @@ export const FormBuilderPage: React.FC<FormBuilderPageProps> = ({
   const [saving, setSaving] = useState(false);
   const [invitationId, setInvitationId] = useState<string | null>(editInvitationId || null);
 
+  // Dynamic presets from /api/master/presets
+  const [presetSongs, setPresetSongs] = useState<PresetSongItem[]>(fallbackMusicList);
+  const [templateCatalogs, setTemplateCatalogs] = useState<TemplateCatalogItem[]>(fallbackTemplates);
+  const [loadingPresets, setLoadingPresets] = useState<boolean>(true);
+
   // Music preview
   const [musicTab, setMusicTab] = useState<'preset' | 'custom'>('preset');
   const [previewingId, setPreviewingId] = useState<string | null>(null);
   const audioPreviewRef = useRef<HTMLAudioElement | null>(null);
+
+  // Fetch Master Presets
+  useEffect(() => {
+    const fetchPresets = async () => {
+      try {
+        const res = await apiRequest<MasterPresetsResponse>('/api/master/presets');
+        if (res.data?.songs && res.data.songs.length > 0) {
+          setPresetSongs(res.data.songs);
+        }
+        if (res.data?.templates && res.data.templates.length > 0) {
+          setTemplateCatalogs(res.data.templates);
+        }
+      } catch (err) {
+        console.warn('Gagal memuat preset master, menggunakan fallback lokal:', err);
+      } finally {
+        setLoadingPresets(false);
+      }
+    };
+
+    fetchPresets();
+  }, []);
 
   // Load existing data if editing
   useEffect(() => {
@@ -168,10 +201,9 @@ export const FormBuilderPage: React.FC<FormBuilderPageProps> = ({
   const updateAkad = (patch: Partial<FormData['events']['akad']>) => setForm(prev => ({ ...prev, events: { ...prev.events, akad: { ...prev.events.akad, ...patch } } }));
   const updateResepsi = (patch: Partial<FormData['events']['resepsi']>) => setForm(prev => ({ ...prev, events: { ...prev.events, resepsi: { ...prev.events.resepsi, ...patch } } }));
 
-  // Build contentJson (everything except slug & templateKey)
+  // Build contentJson
   const buildContentJson = () => {
     const { slug: _s, templateKey: _t, ...rest } = form;
-    // Auto-generate meta
     rest.meta = {
       title: `The Wedding of ${form.groom.nickName || '...'} & ${form.bride.nickName || '...'}`,
       description: `Undangan Pernikahan ${form.groom.fullName || '...'} & ${form.bride.fullName || '...'}`,
@@ -315,25 +347,44 @@ export const FormBuilderPage: React.FC<FormBuilderPageProps> = ({
               </div>
             </SectionCard>
 
-            <SectionCard title="Pilihan Tema Desain">
-              <div className="grid grid-cols-3 gap-3">
-                {(['minimalist', 'floral', 'dark-luxury'] as ThemeType[]).map(t => (
-                  <button key={t} type="button" onClick={() => updateForm({ templateKey: t })}
-                    className={`rounded-xl border-2 p-3 text-center transition-all cursor-pointer ${form.templateKey === t ? 'border-gold-500 bg-gold-50 shadow-md' : 'border-stone-200 hover:border-stone-300 bg-white'}`}>
-                    <div className={`w-8 h-8 rounded-full mx-auto mb-2 border ${t === 'minimalist' ? 'bg-amber-50 border-stone-300' : t === 'floral' ? 'bg-emerald-100 border-emerald-400' : 'bg-stone-900 border-gold-400'}`} />
-                    <span className="text-xs font-semibold text-stone-800 capitalize">{t === 'dark-luxury' ? 'Dark Luxury' : t === 'floral' ? 'Floral Sage' : 'Minimalist'}</span>
-                    {form.templateKey === t && <Check className="w-4 h-4 text-gold-600 mx-auto mt-1" />}
-                  </button>
-                ))}
-              </div>
+            <SectionCard title="Pilihan Tema Desain" subtitle="Daftar tema aktif dari katalog sistem">
+              {loadingPresets ? (
+                <div className="p-4 text-center text-xs text-stone-400">Memuat katalog tema...</div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  {templateCatalogs.map(t => (
+                    <button
+                      key={t.templateKey}
+                      type="button"
+                      onClick={() => updateForm({ templateKey: t.templateKey })}
+                      className={`rounded-xl border-2 p-3 text-center transition-all cursor-pointer ${
+                        form.templateKey === t.templateKey
+                          ? 'border-gold-500 bg-gold-50 shadow-md'
+                          : 'border-stone-200 hover:border-stone-300 bg-white'
+                      }`}
+                    >
+                      <div className={`w-8 h-8 rounded-full mx-auto mb-2 border ${
+                        t.templateKey === 'minimalist'
+                          ? 'bg-amber-50 border-stone-300'
+                          : t.templateKey === 'floral'
+                          ? 'bg-emerald-100 border-emerald-400'
+                          : 'bg-stone-900 border-gold-400'
+                      }`} />
+                      <span className="text-xs font-semibold text-stone-800 block">{t.name}</span>
+                      <p className="text-[10px] text-stone-500 mt-0.5 line-clamp-1">{t.description}</p>
+                      {form.templateKey === t.templateKey && <Check className="w-4 h-4 text-gold-600 mx-auto mt-1" />}
+                    </button>
+                  ))}
+                </div>
+              )}
             </SectionCard>
 
-            <SectionCard title="Musik Latar" subtitle="Pilih dari daftar preset atau upload file .mp3 custom Anda">
+            <SectionCard title="Musik Latar" subtitle="Pilih lagu preset dari katalog atau upload file .mp3 kustom">
               <audio ref={audioPreviewRef} preload="none" />
               <div className="flex border-b border-stone-200 mb-4">
                 <button type="button" onClick={() => setMusicTab('preset')}
                   className={`px-4 py-2 text-xs font-semibold transition-colors cursor-pointer ${musicTab === 'preset' ? 'border-b-2 border-gold-500 text-gold-700' : 'text-stone-500 hover:text-stone-700'}`}>
-                  <Music className="w-3.5 h-3.5 inline mr-1.5" />Daftar Lagu Preset
+                  <Music className="w-3.5 h-3.5 inline mr-1.5" />Daftar Lagu Preset ({presetSongs.length})
                 </button>
                 <button type="button" onClick={() => setMusicTab('custom')}
                   className={`px-4 py-2 text-xs font-semibold transition-colors cursor-pointer ${musicTab === 'custom' ? 'border-b-2 border-gold-500 text-gold-700' : 'text-stone-500 hover:text-stone-700'}`}>
@@ -343,19 +394,22 @@ export const FormBuilderPage: React.FC<FormBuilderPageProps> = ({
 
               {musicTab === 'preset' ? (
                 <div className="space-y-2">
-                  {presetMusicList.map(m => (
+                  {presetSongs.map(m => (
                     <div key={m.id}
-                      className={`flex items-center justify-between gap-3 p-3 rounded-xl border transition-all ${form.music.audioUrl === m.url ? 'border-gold-500 bg-gold-50' : 'border-stone-200 hover:bg-stone-50'}`}>
+                      className={`flex items-center justify-between gap-3 p-3 rounded-xl border transition-all ${form.music.audioUrl === m.audioUrl ? 'border-gold-500 bg-gold-50' : 'border-stone-200 hover:bg-stone-50'}`}>
                       <div className="flex items-center gap-3 flex-1 min-w-0">
-                        <button type="button" onClick={() => togglePreview(m.id, m.url)}
+                        <button type="button" onClick={() => togglePreview(m.id, m.audioUrl)}
                           className="w-8 h-8 rounded-full bg-stone-900 text-white flex items-center justify-center flex-shrink-0 cursor-pointer hover:bg-gold-700 transition-colors">
                           {previewingId === m.id ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5 ml-0.5" />}
                         </button>
-                        <span className="text-sm text-stone-800 font-medium truncate">{m.title}</span>
+                        <div className="min-w-0">
+                          <span className="text-xs sm:text-sm text-stone-800 font-medium block truncate">{m.title}</span>
+                          {m.artist && <span className="text-[10px] text-stone-400 block truncate">{m.artist}</span>}
+                        </div>
                       </div>
-                      <button type="button" onClick={() => { updateForm({ music: { audioUrl: m.url, title: m.title } }); }}
-                        className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer ${form.music.audioUrl === m.url ? 'bg-gold-600 text-white' : 'bg-stone-100 text-stone-700 hover:bg-stone-200'}`}>
-                        {form.music.audioUrl === m.url ? 'Terpilih ✓' : 'Pilih'}
+                      <button type="button" onClick={() => { updateForm({ music: { audioUrl: m.audioUrl, title: m.title } }); }}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer ${form.music.audioUrl === m.audioUrl ? 'bg-gold-600 text-white' : 'bg-stone-100 text-stone-700 hover:bg-stone-200'}`}>
+                        {form.music.audioUrl === m.audioUrl ? 'Terpilih ✓' : 'Pilih'}
                       </button>
                     </div>
                   ))}
@@ -364,7 +418,7 @@ export const FormBuilderPage: React.FC<FormBuilderPageProps> = ({
                 <div className="space-y-3">
                   <input type="file" accept="audio/*,.mp3" onChange={handleMusicUpload}
                     className="block w-full text-sm text-stone-600 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-stone-100 file:text-stone-700 hover:file:bg-stone-200 cursor-pointer" />
-                  {form.music.audioUrl && !presetMusicList.some(p => p.url === form.music.audioUrl) && (
+                  {form.music.audioUrl && !presetSongs.some(p => p.audioUrl === form.music.audioUrl) && (
                     <div className="text-xs text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-xl p-3 flex items-center gap-2">
                       <Check className="w-4 h-4" />
                       <span>File custom terpasang: <strong>{form.music.title || 'custom audio'}</strong></span>

@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { getInvitationData } from './invitationData';
-import { getAuthToken } from './lib/api';
 import { ThemeType, themes } from './themes';
+import { AuthProvider, useAuth } from './context/AuthContext';
+import { ProtectedRoute } from './components/ProtectedRoute';
+import { Role } from './types/api';
 
 // ─── Platform Pages ───
 import { LandingPage } from './pages/LandingPage';
@@ -9,8 +11,9 @@ import { AuthPage } from './pages/AuthPage';
 import { FormBuilderPage } from './pages/FormBuilderPage';
 import { DeployProgressModal } from './pages/DeployProgressModal';
 import { DashboardPage } from './pages/DashboardPage';
+import { AdminDashboardPage } from './pages/AdminDashboardPage';
 
-// ─── Invitation Template Components ───
+// ─── Invitation Template Components (untuk live deployment .vercel.app) ───
 import { CoverSection } from './components/CoverSection';
 import { GreetingQuoteSection } from './components/GreetingQuoteSection';
 import { CoupleProfileSection } from './components/CoupleProfileSection';
@@ -22,19 +25,13 @@ import { RsvpSection } from './components/RsvpSection';
 import { FloatingMusicPlayer } from './components/FloatingMusicPlayer';
 import { DevThemeSwitcher } from './components/DevThemeSwitcher';
 
-// ─── Routing Pages ───
 type AppPage =
   | 'landing'
   | 'auth'
   | 'dashboard'
-  | 'builder'
-  | 'invitation-preview'; // Template mode (served via VITE_INVITATION_DATA)
+  | 'admin-dashboard'
+  | 'builder';
 
-/**
- * Mode Detection:
- * - Jika VITE_INVITATION_DATA terisi & bukan platform builder → render sebagai undangan final.
- * - Jika kosong → jalankan sebagai platform/builder UI.
- */
 const isInvitationMode = (): boolean => {
   const envRaw = import.meta.env.VITE_INVITATION_DATA;
   return !!(envRaw && typeof envRaw === 'string' && envRaw.trim().length > 2);
@@ -103,21 +100,31 @@ const InvitationView: React.FC = () => {
 };
 
 // ═══════════════════════════════════════════════════
-// ─── PLATFORM BUILDER APP (router utama) ──────────
+// ─── PLATFORM BUILDER APP (Router + Role Handler) ──
 // ═══════════════════════════════════════════════════
 const PlatformApp: React.FC = () => {
-  const [page, setPage] = useState<AppPage>(() => {
-    return getAuthToken() ? 'dashboard' : 'landing';
-  });
+  const { role, isAuthenticated, logout } = useAuth();
+  const [page, setPage] = useState<AppPage>('landing');
   const [selectedTemplate, setSelectedTemplate] = useState<ThemeType>('minimalist');
   const [editInvitationId, setEditInvitationId] = useState<string | null>(null);
   const [deployInvitationId, setDeployInvitationId] = useState<string | null>(null);
 
-  const isLoggedIn = !!getAuthToken();
+  // Saat pertama kali load atau saat auth status berubah: arahkan ke dashboard yang sesuai
+  useEffect(() => {
+    if (isAuthenticated && role) {
+      if (page === 'auth') {
+        if (role === 'ADMIN') {
+          setPage('admin-dashboard');
+        } else {
+          setPage('dashboard');
+        }
+      }
+    }
+  }, [isAuthenticated, role]);
 
   const handleSelectTemplate = (template: ThemeType) => {
     setSelectedTemplate(template);
-    if (isLoggedIn) {
+    if (isAuthenticated) {
       setEditInvitationId(null);
       setPage('builder');
     } else {
@@ -125,9 +132,12 @@ const PlatformApp: React.FC = () => {
     }
   };
 
-  const handleAuthSuccess = () => {
-    setEditInvitationId(null);
-    setPage('builder');
+  const handleAuthSuccess = (loggedRole: Role) => {
+    if (loggedRole === 'ADMIN') {
+      setPage('admin-dashboard');
+    } else {
+      setPage('dashboard');
+    }
   };
 
   const handlePublished = (invitationId: string) => {
@@ -139,14 +149,22 @@ const PlatformApp: React.FC = () => {
     setPage('builder');
   };
 
+  const handleLogout = () => {
+    logout();
+    setPage('landing');
+  };
+
   return (
     <>
       {page === 'landing' && (
         <LandingPage
           onSelectTemplate={handleSelectTemplate}
           onNavigateLogin={() => setPage('auth')}
-          onNavigateDashboard={() => setPage('dashboard')}
-          isLoggedIn={isLoggedIn}
+          onNavigateDashboard={() => {
+            if (role === 'ADMIN') setPage('admin-dashboard');
+            else setPage('dashboard');
+          }}
+          isLoggedIn={isAuthenticated}
         />
       )}
 
@@ -157,22 +175,53 @@ const PlatformApp: React.FC = () => {
         />
       )}
 
+      {/* USER DASHBOARD (/dashboard) */}
       {page === 'dashboard' && (
-        <DashboardPage
-          onNavigateLanding={() => setPage('landing')}
-          onCreateNew={() => { setEditInvitationId(null); setPage('builder'); }}
-          onEditInvitation={handleEditInvitation}
-        />
+        <ProtectedRoute
+          allowedRole="USER"
+          onRedirectToLogin={() => setPage('auth')}
+          onRedirectToDashboard={() => setPage('dashboard')}
+          onRedirectToAdminDashboard={() => setPage('admin-dashboard')}
+        >
+          <DashboardPage
+            onNavigateLanding={() => setPage('landing')}
+            onCreateNew={() => { setEditInvitationId(null); setPage('builder'); }}
+            onEditInvitation={handleEditInvitation}
+          />
+        </ProtectedRoute>
       )}
 
+      {/* ADMIN DASHBOARD (/admin/dashboard) */}
+      {page === 'admin-dashboard' && (
+        <ProtectedRoute
+          allowedRole="ADMIN"
+          onRedirectToLogin={() => setPage('auth')}
+          onRedirectToDashboard={() => setPage('dashboard')}
+          onRedirectToAdminDashboard={() => setPage('admin-dashboard')}
+        >
+          <AdminDashboardPage
+            onLogout={handleLogout}
+            onNavigateHome={() => setPage('landing')}
+          />
+        </ProtectedRoute>
+      )}
+
+      {/* FORM BUILDER (/builder) */}
       {page === 'builder' && (
-        <FormBuilderPage
-          initialTemplate={selectedTemplate}
-          editInvitationId={editInvitationId || undefined}
-          onBack={() => setPage(isLoggedIn ? 'dashboard' : 'landing')}
-          onPublished={handlePublished}
-          onSaved={() => { /* Toast / notif bisa ditambah di sini */ }}
-        />
+        <ProtectedRoute
+          allowedRole="USER"
+          onRedirectToLogin={() => setPage('auth')}
+          onRedirectToDashboard={() => setPage('dashboard')}
+          onRedirectToAdminDashboard={() => setPage('admin-dashboard')}
+        >
+          <FormBuilderPage
+            initialTemplate={selectedTemplate}
+            editInvitationId={editInvitationId || undefined}
+            onBack={() => setPage('dashboard')}
+            onPublished={handlePublished}
+            onSaved={() => {}}
+          />
+        </ProtectedRoute>
       )}
 
       {/* Deploy Progress Modal (overlay) */}
@@ -187,14 +236,15 @@ const PlatformApp: React.FC = () => {
   );
 };
 
-// ═══════════════════════════════════════════════════
-// ─── ROOT APP ─────────────────────────────────────
-// ═══════════════════════════════════════════════════
 export const App: React.FC = () => {
   if (isInvitationMode()) {
     return <InvitationView />;
   }
-  return <PlatformApp />;
+  return (
+    <AuthProvider>
+      <PlatformApp />
+    </AuthProvider>
+  );
 };
 
 export default App;

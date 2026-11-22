@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { prisma } from '../lib/prisma';
+import { AuthRequest, authenticate } from '../middlewares/auth';
 
 const router = Router();
 
@@ -26,24 +27,27 @@ router.post('/register', async (req: Request, res: Response): Promise<void> => {
     const salt = await bcrypt.genSalt(10);
     const passwordHash = await bcrypt.hash(password, salt);
 
+    // Otomatis terdaftar dengan role USER
     const user = await prisma.user.create({
       data: {
         name,
         email: email.toLowerCase(),
         passwordHash,
+        role: 'USER',
       },
       select: {
         id: true,
         name: true,
         email: true,
+        role: true,
         createdAt: true,
       },
     });
 
-    // Generate JWT
+    // Generate JWT berisi payload { userId, email, role }
     const secret = process.env.JWT_SECRET || 'super-secret-jwt-key';
     const token = jwt.sign(
-      { userId: user.id, email: user.email },
+      { userId: user.id, email: user.email, role: user.role },
       secret,
       { expiresIn: process.env.JWT_EXPIRES_IN || '7d' } as jwt.SignOptions
     );
@@ -85,10 +89,10 @@ router.post('/login', async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    // Generate JWT
+    // Generate JWT token yang menyimpan payload { userId, email, role }
     const secret = process.env.JWT_SECRET || 'super-secret-jwt-key';
     const token = jwt.sign(
-      { userId: user.id, email: user.email },
+      { userId: user.id, email: user.email, role: user.role },
       secret,
       { expiresIn: process.env.JWT_EXPIRES_IN || '7d' } as jwt.SignOptions
     );
@@ -101,6 +105,7 @@ router.post('/login', async (req: Request, res: Response): Promise<void> => {
           id: user.id,
           name: user.name,
           email: user.email,
+          role: user.role,
           createdAt: user.createdAt,
         },
         token,
@@ -109,6 +114,36 @@ router.post('/login', async (req: Request, res: Response): Promise<void> => {
   } catch (error: any) {
     console.error('Error saat login:', error);
     res.status(500).json({ success: false, message: 'Terjadi kesalahan pada server', error: error.message });
+  }
+});
+
+// GET /api/auth/me
+router.get('/me', authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const userId = req.user!.userId;
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+        createdAt: true,
+      },
+    });
+
+    if (!user) {
+      res.status(404).json({ success: false, message: 'User tidak ditemukan' });
+      return;
+    }
+
+    res.status(200).json({
+      success: true,
+      data: user,
+    });
+  } catch (error: any) {
+    console.error('Error saat get /me:', error);
+    res.status(500).json({ success: false, message: 'Gagal mengambil data profil', error: error.message });
   }
 });
 

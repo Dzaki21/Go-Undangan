@@ -6,6 +6,8 @@ import invitationRoutes from './routes/invitations';
 import uploadRoutes from './routes/upload';
 import deployRoutes from './routes/deploy';
 import publicWishesRoutes from './routes/publicWishes';
+import adminRoutes from './routes/admin';
+import masterRoutes from './routes/master';
 
 dotenv.config();
 
@@ -40,6 +42,8 @@ app.use('/api/invitations', invitationRoutes);
 app.use('/api/upload', uploadRoutes);
 app.use('/api/invitations', deployRoutes); // Menyediakan POST /api/invitations/:id/publish dan GET /api/invitations/:id/deploy-status
 app.use('/api/public/wishes', publicWishesRoutes); // Menyediakan GET & POST /api/public/wishes/:invitationId
+app.use('/api/admin', adminRoutes); // Menyediakan endpoint administrasi khusus ADMIN
+app.use('/api/master', masterRoutes); // Menyediakan GET /api/master/presets (publik/user)
 
 // Global Error Handler
 app.use((err: any, _req: Request, res: Response, _next: express.NextFunction) => {

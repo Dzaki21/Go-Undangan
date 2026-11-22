@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
 import { Heart, Lock, Mail, User, ArrowLeft, AlertCircle } from 'lucide-react';
-import { apiRequest, setAuthToken, setStoredUser } from '../lib/api';
+import { apiRequest } from '../lib/api';
+import { useAuth } from '../context/AuthContext';
+import { Role } from '../types/api';
 
 interface AuthPageProps {
   initialMode?: 'login' | 'register';
-  onSuccess: () => void;
+  onSuccess: (role: Role) => void;
   onBack: () => void;
 }
 
@@ -13,6 +15,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({
   onSuccess,
   onBack,
 }) => {
+  const { login } = useAuth();
   const [isLogin, setIsLogin] = useState(initialMode === 'login');
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -34,10 +37,9 @@ export const AuthPage: React.FC<AuthPageProps> = ({
         body: JSON.stringify(payload),
       });
 
-      if (res.data?.token) {
-        setAuthToken(res.data.token);
-        setStoredUser(res.data.user);
-        onSuccess();
+      if (res.data?.token && res.data?.user) {
+        login(res.data.token, res.data.user);
+        onSuccess(res.data.user.role);
       }
     } catch (err: any) {
       setErrorMsg(err.message || 'Gagal masuk. Periksa kembali email dan password Anda.');

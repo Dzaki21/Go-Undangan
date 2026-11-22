@@ -8,8 +8,8 @@ export const fallbackInvitationData: InvitationData = {
   },
   eventDateIso: "2026-12-28T08:00:00+07:00",
   music: {
-    // Royalty-free acoustic romantic melody
-    audioUrl: "https://cdn.pixabay.com/download/audio/2022/05/16/audio_c97698a3c8.mp3?filename=acoustic-guitars-ambient-uplifting-112191.mp3",
+    // Lagu lokal bundel pernikahan
+    audioUrl: "/audio/wedding-song.mp3",
     title: "Acoustic Wedding Harmony",
   },
   quote: {

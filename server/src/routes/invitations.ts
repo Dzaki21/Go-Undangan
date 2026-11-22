@@ -87,7 +87,7 @@ router.get('/', async (req: AuthRequest, res: Response): Promise<void> => {
 router.get('/:id', async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const userId = req.user!.userId;
-    const { id } = req.params;
+    const id = req.params.id as string;
 
     const invitation = await prisma.invitation.findFirst({
       where: { id, userId },
@@ -118,7 +118,7 @@ router.get('/:id', async (req: AuthRequest, res: Response): Promise<void> => {
 router.put('/:id', async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const userId = req.user!.userId;
-    const { id } = req.params;
+    const id = req.params.id as string;
     const { slug, templateKey, contentJson } = req.body;
 
     const existing = await prisma.invitation.findFirst({
