@@ -1,6 +1,7 @@
-import React from 'react';
-import { Sparkles, Heart, ArrowRight, ShieldCheck, Zap, Globe, Music, Smartphone } from 'lucide-react';
+import React, { useState } from 'react';
+import { Sparkles, Heart, ArrowRight, ShieldCheck, Zap, Globe, Music, Smartphone, Eye } from 'lucide-react';
 import { ThemeType } from '../themes';
+import { TemplatePreviewModal } from '../components/TemplatePreviewModal';
 
 interface LandingPageProps {
   onSelectTemplate: (template: ThemeType) => void;
@@ -15,6 +16,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({
   onNavigateDashboard,
   isLoggedIn,
 }) => {
+  const [previewTheme, setPreviewTheme] = useState<ThemeType | null>(null);
+
   const templateCards: {
     id: ThemeType;
     title: string;
@@ -208,13 +211,22 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                     <p className="text-xs text-stone-600 leading-relaxed font-light">{card.description}</p>
                   </div>
 
-                  <div className="pt-4 border-t border-stone-100 flex items-center gap-3">
+                  <div className="pt-4 border-t border-stone-100 flex flex-col sm:flex-row items-center gap-2 sm:gap-3">
                     <button
+                      type="button"
+                      onClick={() => setPreviewTheme(card.id)}
+                      className="w-full sm:w-auto px-4 py-3 bg-stone-100 hover:bg-stone-200 text-stone-800 text-xs sm:text-sm font-semibold rounded-full transition-colors flex items-center justify-center gap-1.5 cursor-pointer border border-stone-200"
+                    >
+                      <Eye className="w-4 h-4 text-stone-600" />
+                      <span>Lihat Preview</span>
+                    </button>
+                    <button
+                      type="button"
                       onClick={() => onSelectTemplate(card.id)}
-                      className="flex-1 py-3 bg-stone-900 hover:bg-gold-700 text-white text-xs sm:text-sm font-semibold rounded-full transition-colors flex items-center justify-center gap-2 cursor-pointer shadow-sm"
+                      className="w-full sm:flex-1 py-3 bg-stone-900 hover:bg-gold-700 text-white text-xs sm:text-sm font-semibold rounded-full transition-colors flex items-center justify-center gap-2 cursor-pointer shadow-sm"
                     >
                       <Zap className="w-4 h-4 text-gold-400" />
-                      <span>Gunakan Template Ini</span>
+                      <span>Gunakan Template</span>
                     </button>
                   </div>
                 </div>
@@ -233,6 +245,18 @@ export const LandingPage: React.FC<LandingPageProps> = ({
           <p>© {new Date().getFullYear()} GoUndangan Platform. Powered by React, Vite, Tailwind CSS, & Vercel API.</p>
         </div>
       </footer>
+
+      {/* Modal Preview Template */}
+      {previewTheme && (
+        <TemplatePreviewModal
+          theme={previewTheme}
+          onClose={() => setPreviewTheme(null)}
+          onSelect={(selectedTheme) => {
+            setPreviewTheme(null);
+            onSelectTemplate(selectedTheme);
+          }}
+        />
+      )}
     </div>
   );
 };
