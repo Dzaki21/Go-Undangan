@@ -93,12 +93,21 @@ router.patch('/invitations/:id/payment-status', async (req: Request, res: Respon
       return;
     }
 
+    const updateData: any = {
+      paymentStatus: status,
+      paymentApprovedAt: status === 'approved' ? new Date() : null,
+    };
+
+    // Default masa aktif 3 bulan jika diapprove pertama kali dan belum ada expired date
+    if (status === 'approved' && !invitation.deploymentExpiresAt) {
+      const defaultExpires = new Date();
+      defaultExpires.setMonth(defaultExpires.getMonth() + 3);
+      updateData.deploymentExpiresAt = defaultExpires;
+    }
+
     const updated = await prisma.invitation.update({
       where: { id },
-      data: {
-        paymentStatus: status,
-        paymentApprovedAt: status === 'approved' ? new Date() : null,
-      },
+      data: updateData,
       include: {
         user: { select: { id: true, name: true, email: true } },
       },
@@ -112,6 +121,110 @@ router.patch('/invitations/:id/payment-status', async (req: Request, res: Respon
   } catch (error: any) {
     console.error('Error update payment status:', error);
     res.status(500).json({ success: false, message: 'Gagal mengubah status pembayaran', error: error.message });
+  }
+});
+
+// ==========================================
+// 2c. SET MASA AKTIF DEPLOYMENT (DURASI EXPIRATION)
+// PATCH /api/admin/invitations/:id/duration
+// ==========================================
+router.patch('/invitations/:id/duration', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const id = req.params.id as string;
+    const { durationDays, customExpiryDate } = req.body;
+    // durationDays: 7 (1 minggu), 14 (2 minggu), 30 (1 bulan), 90 (3 bulan), atau 0/null (selamanya/unlimited)
+
+    const invitation = await prisma.invitation.findUnique({ where: { id } });
+    if (!invitation) {
+      res.status(404).json({ success: false, message: 'Undangan tidak ditemukan' });
+      return;
+    }
+
+    let targetExpiry: Date | null = null;
+
+    if (customExpiryDate) {
+      targetExpiry = new Date(customExpiryDate);
+    } else if (typeof durationDays === 'number' && durationDays > 0) {
+      targetExpiry = new Date();
+      targetExpiry.setDate(targetExpiry.getDate() + durationDays);
+    } else if (durationDays === null || durationDays === 0) {
+      targetExpiry = null; // Unlimited / Tanpa Batas Waktu
+    }
+
+    const updated = await prisma.invitation.update({
+      where: { id },
+      data: {
+        deploymentExpiresAt: targetExpiry,
+      },
+      include: {
+        user: { select: { id: true, name: true, email: true } },
+      },
+    });
+
+    res.json({
+      success: true,
+      message: targetExpiry
+        ? `Masa aktif berhasil diset hingga ${targetExpiry.toLocaleDateString('id-ID')}`
+        : 'Masa aktif berhasil diset menjadi Tanpa Batas Waktu (Selamanya)',
+      data: updated,
+    });
+  } catch (error: any) {
+    console.error('Error update duration:', error);
+    res.status(500).json({ success: false, message: 'Gagal mengatur masa aktif undangan', error: error.message });
+  }
+});
+
+// ==========================================
+// 2d. HAPUS UNDANGAN BESERTA PROJECT VERCEL
+// DELETE /api/admin/invitations/:id
+// ==========================================
+router.delete('/invitations/:id', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const id = req.params.id as string;
+
+    const invitation = await prisma.invitation.findUnique({ where: { id } });
+    if (!invitation) {
+      res.status(404).json({ success: false, message: 'Undangan tidak ditemukan' });
+      return;
+    }
+
+    // 1. Hapus Project di Vercel jika pernah dibuat
+    const vercelToken = process.env.VERCEL_TOKEN;
+    const vercelTarget = invitation.vercelProjectId || invitation.vercelProjectName;
+
+    if (vercelToken && vercelTarget) {
+      try {
+        console.log(`[Admin Delete] Menghapus project Vercel: ${vercelTarget}`);
+        const vercelRes = await fetch(`https://api.vercel.com/v9/projects/${vercelTarget}`, {
+          method: 'DELETE',
+          headers: {
+            Authorization: `Bearer ${vercelToken}`,
+          },
+        });
+        if (vercelRes.ok) {
+          console.log(`[Admin Delete] Sukses menghapus project Vercel ${vercelTarget}`);
+        } else {
+          const errData = await vercelRes.json();
+          console.warn(`[Admin Delete] Vercel delete warning/failed:`, errData);
+        }
+      } catch (vErr) {
+        console.warn(`[Admin Delete] Error calling Vercel API:`, vErr);
+      }
+    }
+
+    // 2. Hapus Guest Wishes terkait (jika tidak cascade)
+    await prisma.guestWish.deleteMany({ where: { invitationId: id } });
+
+    // 3. Hapus Undangan dari Database
+    await prisma.invitation.delete({ where: { id } });
+
+    res.json({
+      success: true,
+      message: `Undangan /${invitation.slug} beserta project deployment Vercel telah berhasil dihapus permanen.`,
+    });
+  } catch (error: any) {
+    console.error('Error delete invitation by admin:', error);
+    res.status(500).json({ success: false, message: 'Gagal menghapus undangan', error: error.message });
   }
 });
 

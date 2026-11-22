@@ -28,6 +28,7 @@ export interface InvitationListItem {
   paymentProofUrl?: string | null;
   paymentAmount?: number | null;
   paymentApprovedAt?: string | null;
+  deploymentExpiresAt?: string | null;
   deploymentUrl?: string;
   vercelProjectName?: string;
   publishedAt?: string;

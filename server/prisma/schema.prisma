@@ -62,6 +62,7 @@ model Invitation {
   paymentAmount      Int?          @default(99000)
   paymentApprovedAt  DateTime?
   publishedAt        DateTime?
+  deploymentExpiresAt DateTime?
   createdAt          DateTime     @default(now())
   updatedAt          DateTime     @updatedAt
   wishes             GuestWish[]

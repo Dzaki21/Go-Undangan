@@ -30,6 +30,16 @@ router.post('/:id/publish', authenticateToken, async (req: AuthRequest, res: Res
       return;
     }
 
+    // Validasi Masa Aktif Deployment (Expired Check)
+    if (invitation.deploymentExpiresAt && new Date(invitation.deploymentExpiresAt) < new Date()) {
+      res.status(403).json({
+        success: false,
+        message: 'Masa aktif penayangan undangan ini telah berakhir. Silakan hubungi admin untuk perpanjangan masa aktif.',
+        deploymentExpiresAt: invitation.deploymentExpiresAt,
+      });
+      return;
+    }
+
     const vercelToken = process.env.VERCEL_TOKEN;
     const githubRepo = process.env.GITHUB_REPO; // format: owner/repo
     const githubRepoId = process.env.GITHUB_REPO_ID;

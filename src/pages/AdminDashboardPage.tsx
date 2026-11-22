@@ -95,6 +95,41 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
     }
   };
 
+  // Set masa aktif / durasi deployment undangan
+  const handleUpdateDuration = async (invitationId: string, durationDays: number | null) => {
+    try {
+      const res = await apiRequest<{ success: boolean; message: string }>(`/api/admin/invitations/${invitationId}/duration`, {
+        method: 'PATCH',
+        body: JSON.stringify({ durationDays }),
+      });
+      alert(res.message || 'Masa aktif berhasil diperbarui!');
+      fetchInvitations();
+    } catch (err: any) {
+      alert(err.message || 'Gagal mengatur masa aktif undangan');
+    }
+  };
+
+  // Hapus undangan beserta deployment Vercel
+  const handleDeleteInvitation = async (invitation: InvitationListItem) => {
+    const isReady = invitation.deployStatus === 'ready';
+    const warningText = isReady
+      ? `PERINGATAN: Undangan "/${invitation.slug}" sedang ONLINE di Vercel.\n\nMenghapus undangan ini juga akan MENGHAPUS PROJECT & DOMAIN VERCEL secara permanen!\n\nLanjutkan penghapusan?`
+      : `Yakin ingin menghapus draf undangan "/${invitation.slug}" secara permanen?`;
+
+    if (!confirm(warningText)) return;
+
+    try {
+      const res = await apiRequest<{ success: boolean; message: string }>(`/api/admin/invitations/${invitation.id}`, {
+        method: 'DELETE',
+      });
+      alert(res.message || 'Undangan dan deployment berhasil dihapus!');
+      fetchInvitations();
+      fetchStats();
+    } catch (err: any) {
+      alert(err.message || 'Gagal menghapus undangan');
+    }
+  };
+
   const fetchSongs = async () => {
     setLoadingSongs(true);
     try {
@@ -629,8 +664,9 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
                           <th className="px-4 py-3 font-semibold text-stone-700">Tema</th>
                           <th className="px-4 py-3 font-semibold text-stone-700">Status Pembayaran</th>
                           <th className="px-4 py-3 font-semibold text-stone-700">Bukti Transfer</th>
+                          <th className="px-4 py-3 font-semibold text-stone-700">Masa Aktif Deployment</th>
                           <th className="px-4 py-3 font-semibold text-stone-700">Status Deploy</th>
-                          <th className="px-4 py-3 font-semibold text-stone-700">Konfirmasi Admin</th>
+                          <th className="px-4 py-3 font-semibold text-stone-700">Aksi Admin</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-stone-100">
@@ -687,6 +723,41 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
                                 <span className="text-stone-400 text-[11px] italic">Tidak ada</span>
                               )}
                             </td>
+                            {/* Masa Aktif Deployment */}
+                            <td className="px-4 py-3">
+                              <div className="space-y-1">
+                                {inv.deploymentExpiresAt ? (
+                                  <div className="flex items-center gap-1 text-[11px]">
+                                    <Clock className="w-3 h-3 text-gold-600" />
+                                    <span className={new Date(inv.deploymentExpiresAt) < new Date() ? 'text-rose-600 font-bold' : 'text-stone-700 font-medium'}>
+                                      s/d {new Date(inv.deploymentExpiresAt).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}
+                                    </span>
+                                  </div>
+                                ) : (
+                                  <span className="text-[11px] text-emerald-700 font-medium">♾️ Selamanya (Unlimited)</span>
+                                )}
+
+                                <select
+                                  onChange={(e) => {
+                                    const val = e.target.value;
+                                    if (val === '') return;
+                                    handleUpdateDuration(inv.id, val === 'unlimited' ? 0 : parseInt(val, 10));
+                                    e.target.value = '';
+                                  }}
+                                  defaultValue=""
+                                  className="text-[10px] bg-stone-50 border border-stone-200 rounded px-1.5 py-0.5 text-stone-600 focus:outline-none cursor-pointer"
+                                >
+                                  <option value="" disabled>Ubah durasi...</option>
+                                  <option value="7">1 Minggu</option>
+                                  <option value="14">2 Minggu</option>
+                                  <option value="30">1 Bulan</option>
+                                  <option value="60">2 Bulan</option>
+                                  <option value="90">3 Bulan</option>
+                                  <option value="180">6 Bulan</option>
+                                  <option value="unlimited">Selamanya (Unlimited)</option>
+                                </select>
+                              </div>
+                            </td>
                             <td className="px-4 py-3">
                               <span
                                 className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${getStatusBadge(
@@ -723,6 +794,16 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
                                     Reject
                                   </button>
                                 )}
+
+                                {/* HAPUS UNDANGAN & DEPLOYMENT VERCEL */}
+                                <button
+                                  onClick={() => handleDeleteInvitation(inv)}
+                                  className="px-2 py-1 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-lg text-[10px] font-semibold transition-colors cursor-pointer flex items-center gap-1 border border-rose-200"
+                                  title="Hapus undangan dan hapus project Vercel secara permanen"
+                                >
+                                  <Trash2 className="w-3 h-3" />
+                                  <span>Hapus</span>
+                                </button>
                               </div>
                             </td>
                           </tr>
