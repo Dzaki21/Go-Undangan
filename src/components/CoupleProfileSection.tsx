@@ -107,11 +107,11 @@ export const CoupleProfileSection: React.FC<CoupleProfileSectionProps> = ({
           <div className={`w-16 h-0.5 mx-auto mt-2 ${themeConfig.dividerColor}`} />
         </div>
 
-        <div className="flex flex-col md:flex-row items-center justify-center gap-8 md:gap-6 relative">
+        <div className="flex flex-col items-center justify-center gap-8 relative">
           <ProfileCard profile={groom} role="Mempelai Pria" themeConfig={themeConfig} />
 
           {/* Center Divider Heart */}
-          <div className="hidden md:flex flex-col items-center justify-center z-10">
+          <div className="flex flex-col items-center justify-center z-10 -my-2">
             <div
               className={`w-10 h-10 rounded-full flex items-center justify-center shadow-lg ${
                 themeConfig.id === 'dark-luxury'

@@ -165,7 +165,7 @@ export const EventScheduleSection: React.FC<EventScheduleSectionProps> = ({
         </div>
 
         {/* Event Cards Grid */}
-        <div className="flex flex-col md:flex-row gap-6 max-w-3xl mx-auto">
+        <div className="flex flex-col gap-6 max-w-xl mx-auto">
           {renderEventCard(akad, 'Sesi Sakral')}
           {resepsi && resepsi.enabled && renderEventCard(resepsi, 'Sesi Perayaan')}
         </div>
