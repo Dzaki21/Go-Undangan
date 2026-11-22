@@ -220,22 +220,22 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                     <p className="text-xs text-stone-600 leading-relaxed font-light">{card.description}</p>
                   </div>
 
-                  <div className="pt-4 border-t border-stone-100 flex flex-col sm:flex-row items-center gap-2 sm:gap-3">
-                    <button
-                      type="button"
-                      onClick={() => setPreviewTheme(card.id)}
-                      className="w-full sm:w-auto px-4 py-3 bg-stone-100 hover:bg-stone-200 text-stone-800 text-xs sm:text-sm font-semibold rounded-full transition-colors flex items-center justify-center gap-1.5 cursor-pointer border border-stone-200"
-                    >
-                      <Eye className="w-4 h-4 text-stone-600" />
-                      <span>Lihat Preview</span>
-                    </button>
+                  <div className="pt-4 border-t border-stone-100 flex flex-col gap-2.5">
                     <button
                       type="button"
                       onClick={() => onSelectTemplate(card.id)}
-                      className="w-full sm:flex-1 py-3 bg-stone-900 hover:bg-gold-700 text-white text-xs sm:text-sm font-semibold rounded-full transition-colors flex items-center justify-center gap-2 cursor-pointer shadow-sm"
+                      className="w-full py-2.5 px-4 bg-stone-900 hover:bg-gold-700 text-white text-xs sm:text-sm font-semibold rounded-full transition-colors flex items-center justify-center gap-2 cursor-pointer shadow-sm"
                     >
                       <Zap className="w-4 h-4 text-gold-400" />
                       <span>Gunakan Template</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setPreviewTheme(card.id)}
+                      className="w-full py-2.5 px-4 bg-stone-100 hover:bg-stone-200 text-stone-700 text-xs sm:text-sm font-medium rounded-full transition-colors flex items-center justify-center gap-2 cursor-pointer border border-stone-200"
+                    >
+                      <Eye className="w-4 h-4 text-stone-500" />
+                      <span>Lihat Preview</span>
                     </button>
                   </div>
                 </div>
